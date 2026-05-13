@@ -14,6 +14,7 @@
 
 # The typical build directory
 /build
+/build-*
 /compile_commands.json
 CMakeUserPresets.json
 
@@ -52,6 +53,8 @@ build
 eggs
 parts
 bin
+!apps/chrono-workbench/bin/
+!apps/chrono-workbench/bin/**
 var
 sdist
 develop-eggs

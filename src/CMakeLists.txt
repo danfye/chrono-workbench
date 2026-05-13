@@ -677,6 +677,9 @@ add_subdirectory(chrono_swig/chrono_csharp)
 # Add directories for model libraries
 add_subdirectory(chrono_models)
 
+# Add the Chrono Workbench support executable used by the Electron shell.
+add_subdirectory(workbench)
+
 # Add directories for demo programs, unit test programs, and benchmark test programs.
 if(BUILD_DEMOS)
   add_subdirectory(demos)

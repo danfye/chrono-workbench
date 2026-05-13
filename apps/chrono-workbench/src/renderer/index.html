@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chrono Workbench</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">C</div>
+          <div>
+            <h1>Chrono Workbench</h1>
+            <p>Engineering browser</p>
+          </div>
+        </div>
+
+        <section class="panel config-panel">
+          <div class="panel-title">Workspace</div>
+          <label>
+            Build directory
+            <input id="buildDirInput" type="text" />
+          </label>
+          <label>
+            Data directory
+            <input id="dataDirInput" type="text" />
+          </label>
+          <button id="saveConfigBtn" class="primary">Save paths</button>
+          <div id="scanWarning" class="warning hidden"></div>
+        </section>
+
+        <section class="browser-section">
+          <div class="section-header">
+            <span>Projects</span>
+            <button id="importAdamsBtn">Import .adm</button>
+          </div>
+          <div id="projectsList" class="item-list empty-list">No imported projects yet.</div>
+        </section>
+
+        <section class="browser-section">
+          <div class="section-header">
+            <span>Chrono demos</span>
+            <div class="section-actions">
+              <span id="selectedBuildCount">0 selected</span>
+              <button id="buildSelectedBtn" disabled>Build Selected</button>
+              <button id="refreshBtn">Refresh</button>
+            </div>
+          </div>
+          <div id="demosList" class="item-list empty-list">No demos found.</div>
+        </section>
+      </aside>
+
+      <main class="main">
+        <section class="detail">
+          <div class="detail-header">
+            <div>
+              <div id="selectedType" class="eyebrow">No selection</div>
+              <h2 id="selectedName">Select a demo or imported model</h2>
+            </div>
+            <span id="runState" class="status idle">Idle</span>
+          </div>
+
+          <div class="detail-grid">
+            <div class="detail-block">
+              <h3>Source</h3>
+              <p id="sourcePath" class="mono muted">None</p>
+            </div>
+            <div class="detail-block">
+              <h3>Run command</h3>
+              <p id="runCommand" class="mono muted">Select an item to preview the command.</p>
+            </div>
+            <div class="detail-block">
+              <h3>Build command</h3>
+              <p id="buildCommand" class="mono muted">Select a demo to preview the build command.</p>
+            </div>
+            <div class="detail-block">
+              <h3>Data directory</h3>
+              <p id="dataDir" class="mono muted">None</p>
+            </div>
+            <div class="detail-block">
+              <h3>Output directory</h3>
+              <p id="outputDir" class="mono muted">None</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="run-panel">
+          <div class="run-actions">
+            <button id="runBtn" class="primary" disabled>Run</button>
+            <button id="stopBtn">Stop</button>
+            <button id="openOutputBtn" disabled>Open Output</button>
+            <button id="openLogBtn" disabled>Open Log</button>
+          </div>
+          <div class="run-note">
+            Chrono 3D simulation opens in a native external window. Workbench keeps the project, command, logs, and output folder together.
+          </div>
+        </section>
+
+        <section class="logs">
+          <div class="logs-header">
+            <span>Run log</span>
+            <button id="clearLogBtn">Clear</button>
+          </div>
+          <pre id="logOutput"></pre>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

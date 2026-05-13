@@ -1,0 +1,14 @@
+{
+  "name": "chrono-workbench",
+  "version": "0.1.0",
+  "description": "Project Chrono engineering workbench for browsing demos, importing ADAMS models, and launching native simulations.",
+  "private": true,
+  "main": "src/main.js",
+  "scripts": {
+    "dev": "electron .",
+    "build": "node scripts/check.js"
+  },
+  "devDependencies": {
+    "electron": "^31.7.7"
+  }
+}

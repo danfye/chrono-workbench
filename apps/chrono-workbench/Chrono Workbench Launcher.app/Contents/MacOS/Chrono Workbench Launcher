@@ -1,0 +1,4 @@
+#!/bin/sh
+APP_BUNDLE_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+WORKBENCH_DIR=$(CDPATH= cd -- "$APP_BUNDLE_DIR/.." && pwd)
+exec "$WORKBENCH_DIR/bin/start-workbench-macos.sh"

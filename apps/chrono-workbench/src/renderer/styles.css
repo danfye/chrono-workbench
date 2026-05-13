@@ -1,0 +1,411 @@
+:root {
+  --bg: #f4f5f7;
+  --panel: #ffffff;
+  --ink: #1f2733;
+  --muted: #687384;
+  --line: #d9dee7;
+  --accent: #2368c4;
+  --accent-dark: #174d95;
+  --danger: #b42318;
+  --success: #17803b;
+  --warning-bg: #fff5d8;
+  --warning-ink: #7a4c00;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--ink);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  border: 1px solid var(--line);
+  background: #ffffff;
+  color: var(--ink);
+  border-radius: 6px;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: #aab5c5;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+button.primary:hover:not(:disabled) {
+  background: var(--accent-dark);
+}
+
+input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 7px 8px;
+  color: var(--ink);
+  background: #ffffff;
+}
+
+#app {
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.sidebar {
+  border-right: 1px solid var(--line);
+  background: #eef1f5;
+  padding: 18px;
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.brand-mark {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: #202936;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.brand p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.panel,
+.detail,
+.run-panel,
+.logs {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.config-panel {
+  padding: 14px;
+  margin-bottom: 18px;
+}
+
+.panel-title,
+.section-header,
+.logs-header {
+  font-weight: 650;
+  font-size: 13px;
+  letter-spacing: 0;
+}
+
+label {
+  display: block;
+  margin: 12px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+label input {
+  margin-top: 5px;
+  font-size: 12px;
+}
+
+.warning {
+  margin-top: 10px;
+  border: 1px solid #ebcf84;
+  background: var(--warning-bg);
+  color: var(--warning-ink);
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.hidden {
+  display: none;
+}
+
+.browser-section {
+  margin-top: 16px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.section-header button {
+  padding: 5px 8px;
+  font-size: 12px;
+}
+
+.section-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.section-actions span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.empty-list {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.item {
+  text-align: left;
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 10px;
+  cursor: pointer;
+}
+
+.item:focus {
+  outline: 2px solid rgba(35, 104, 196, 0.28);
+  outline-offset: 1px;
+}
+
+.item-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+}
+
+.item-check {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  flex: 0 0 auto;
+}
+
+.item-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.item-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.item.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(35, 104, 196, 0.15);
+}
+
+.item-name {
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.item-meta {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.item-badge {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.item-badge.built {
+  background: #e5f4ea;
+  color: var(--success);
+}
+
+.item-badge.missing {
+  background: #eef1f5;
+  color: var(--muted);
+}
+
+.main {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto auto minmax(220px, 1fr);
+  gap: 14px;
+  padding: 18px;
+}
+
+.detail {
+  padding: 18px;
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: start;
+  margin-bottom: 18px;
+}
+
+.eyebrow {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+h2 {
+  margin: 4px 0 0;
+  font-size: 24px;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+h3 {
+  margin: 0 0 7px;
+  font-size: 13px;
+}
+
+.status {
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.status.idle {
+  background: #eef1f5;
+  color: var(--muted);
+}
+
+.status.running {
+  background: #e5f4ea;
+  color: var(--success);
+}
+
+.status.error {
+  background: #fde8e6;
+  color: var(--danger);
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.detail-block {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 12px;
+  min-height: 96px;
+}
+
+.mono {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.muted {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.run-panel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 14px;
+}
+
+.run-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.run-note {
+  color: var(--muted);
+  font-size: 13px;
+  max-width: 560px;
+  line-height: 1.45;
+}
+
+.logs {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.logs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+  padding: 10px 12px;
+}
+
+.logs-header button {
+  padding: 5px 8px;
+  font-size: 12px;
+}
+
+#logOutput {
+  margin: 0;
+  padding: 12px;
+  background: #141922;
+  color: #dbe7f7;
+  overflow: auto;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}

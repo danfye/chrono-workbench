@@ -44,7 +44,6 @@ using namespace chrono;
 using namespace chrono::fea;
 using namespace chrono::irrlicht;
 using namespace chrono::postprocess;
-using namespace irr;
 
 // Output directory
 const std::string out_dir = GetChronoOutputPath() + "FEA_SHELLS";
@@ -442,7 +441,7 @@ int main(int argc, char* argv[]) {
     vis->AddLogo();
     vis->AddSkyBox();
     vis->AddTypicalLights();
-    vis->AddCamera(ChVector<>(0.0, 6.0, -10.0));
+    vis->AddCamera(ChVector<>(0.0, 6.0, -15.0));
     vis->AttachSystem(&sys);
 
     // Change solver to PardisoMKL

@@ -34,7 +34,7 @@ ChConveyor::ChConveyor(double xlength, double ythick, double zwidth) : conveyor_
     conveyor_mat = chrono_types::make_shared<ChMaterialSurfaceNSC>();
 
     conveyor_plate->GetCollisionModel()->ClearModel();
-    conveyor_plate->GetCollisionModel()->AddBox(conveyor_mat, xlength * 0.5, ythick * 0.5, zwidth * 0.5);
+    conveyor_plate->GetCollisionModel()->AddBox(conveyor_mat, xlength, ythick, zwidth);
     conveyor_plate->GetCollisionModel()->BuildModel();
     conveyor_plate->SetCollide(true);
 
@@ -46,7 +46,7 @@ ChConveyor::ChConveyor(double xlength, double ythick, double zwidth) : conveyor_
     conveyor_truss->AddMarker(mmark1);
     conveyor_plate->AddMarker(mmark2);
 
-    internal_link->ReferenceMarkers(mmark1.get(), mmark2.get());
+    internal_link->SetUpMarkers(mmark1.get(), mmark2.get());
 }
 
 ChConveyor::ChConveyor(const ChConveyor& other) : ChPhysicsItem(other) {
@@ -313,12 +313,12 @@ void ChConveyor::RemoveCollisionModelsFromSystem() {
 
 // FILE I/O
 
-void ChConveyor::ArchiveOUT(ChArchiveOut& marchive) {
+void ChConveyor::ArchiveOut(ChArchiveOut& marchive) {
     // version number
     marchive.VersionWrite<ChConveyor>();
 
     // serialize parent class
-    ChPhysicsItem::ArchiveOUT(marchive);
+    ChPhysicsItem::ArchiveOut(marchive);
 
     // serialize all member data:
     marchive << CHNVP(conveyor_speed);
@@ -328,12 +328,12 @@ void ChConveyor::ArchiveOUT(ChArchiveOut& marchive) {
 }
 
 /// Method to allow de serialization of transient data from archives.
-void ChConveyor::ArchiveIN(ChArchiveIn& marchive) {
+void ChConveyor::ArchiveIn(ChArchiveIn& marchive) {
     // version number
     /*int version =*/ marchive.VersionRead<ChConveyor>();
 
     // deserialize parent class
-    ChPhysicsItem::ArchiveIN(marchive);
+    ChPhysicsItem::ArchiveIn(marchive);
 
     // stream in all member data:
     marchive >> CHNVP(conveyor_speed);

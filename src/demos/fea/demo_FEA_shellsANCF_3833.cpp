@@ -31,15 +31,13 @@ using namespace chrono;
 using namespace chrono::fea;
 using namespace chrono::irrlicht;
 
-using namespace irr;
-
 int main(int argc, char* argv[]) {
     GetLog() << "Copyright (c) 2017 projectchrono.org\nChrono version: " << CHRONO_VERSION << "\n\n";
 
     double time_step = 1e-3;
 
     ChSystemSMC sys;
-    sys.Set_G_acc(ChVector<>(0, 0, -9.80665));
+    sys.Set_G_acc(ChVector<>(0, 0, -9.81));
 
     GetLog() << "-----------------------------------------------------------------\n";
     GetLog() << " Higher order ANCF Shell Element demo with different constraints \n";

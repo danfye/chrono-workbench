@@ -32,33 +32,47 @@
 #include "chrono_vehicle/terrain/RigidTerrain.h"
 #include "chrono_vehicle/terrain/FlatTerrain.h"
 #include "chrono_vehicle/utils/ChVehiclePath.h"
-#include "chrono_vehicle/wheeled_vehicle/utils/ChWheeledVehicleVisualSystemIrrlicht.h"
 
 #include "chrono_models/vehicle/hmmwv/HMMWV.h"
 
 #ifdef CHRONO_POSTPROCESS
-#include "chrono_postprocess/ChGnuPlot.h"
+    #include "chrono_postprocess/ChGnuPlot.h"
 #endif
 
 #include "chrono_thirdparty/filesystem/path.h"
 
-using namespace chrono;
+#ifdef CHRONO_IRRLICHT
+    #include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicleVisualSystemIrrlicht.h"
 using namespace chrono::irrlicht;
+#endif
+
+#ifdef CHRONO_VSG
+    #include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicleVisualSystemVSG.h"
+using namespace chrono::vsg3d;
+#endif
+
+using namespace chrono;
 using namespace chrono::vehicle;
 using namespace chrono::vehicle::hmmwv;
 
 // =============================================================================
 
-// Type of powertrain model (SHAFTS, SIMPLE, SIMPLE_CVT)
-PowertrainModelType powertrain_model = PowertrainModelType::SHAFTS;
+// Run-time visualization system (IRRLICHT or VSG)
+ChVisualSystem::Type vis_type = ChVisualSystem::Type::VSG;
+
+// Type of engine model (SHAFTS, SIMPLE, SIMPLE_MAP)
+EngineModelType engine_model = EngineModelType::SHAFTS;
+
+// Type of transmission model (SHAFTS, SIMPLE_MAP)
+TransmissionModelType transmission_model = TransmissionModelType::SHAFTS;
 
 // Drive type (FWD, RWD, or AWD)
 DrivelineTypeWV drive_type = DrivelineTypeWV::AWD;
 
-// Type of tire model (RIGID, RIGID_MESH, FIALA, PAC89, PAC02, TMEASY)
-TireModelType tire_model = TireModelType::TMEASY;
+// Type of tire model (RIGID, RIGID_MESH, FIALA, PAC89, PAC02, TMEASY, TMSIMPLE)
+TireModelType tire_model = TireModelType::TMSIMPLE;
 
-enum class TerrainType {FLAT, RIGID};
+enum class TerrainType { FLAT, RIGID };
 TerrainType terrain_type = TerrainType::RIGID;
 
 // Terrain length (X direction)
@@ -113,7 +127,8 @@ int main(int argc, char* argv[]) {
     my_hmmwv.SetContactMethod(ChContactMethod::SMC);
     my_hmmwv.SetChassisFixed(false);
     my_hmmwv.SetInitPosition(ChCoordsys<>(init_loc, yaw_rot));
-    my_hmmwv.SetPowertrainType(powertrain_model);
+    my_hmmwv.SetEngineType(engine_model);
+    my_hmmwv.SetTransmissionType(transmission_model);
     my_hmmwv.SetDriveType(drive_type);
     my_hmmwv.SetTireType(tire_model);
     my_hmmwv.SetTireStepSize(tire_step_size);
@@ -162,15 +177,44 @@ int main(int argc, char* argv[]) {
     driver.GetSpeedController().SetGains(0.4, 0, 0);
     driver.Initialize();
 
-    // Create the vehicle Irrlicht interface
-    auto vis = chrono_types::make_shared<ChWheeledVehicleVisualSystemIrrlicht>();
-    vis->SetWindowTitle("HMMWV acceleration test");
-    vis->SetChaseCamera(ChVector<>(0.0, 0.0, 1.75), 6.0, 0.5);
-    vis->Initialize();
-    vis->AddLightDirectional();
-    vis->AddSkyBox();
-    vis->AddLogo();
-    vis->AttachVehicle(&my_hmmwv.GetVehicle());
+    // Create the vehicle run-time visualization interface
+    std::shared_ptr<ChVehicleVisualSystem> vis;
+    switch (vis_type) {
+        case ChVisualSystem::Type::IRRLICHT: {
+#ifdef CHRONO_IRRLICHT
+            auto vis_irr = chrono_types::make_shared<ChWheeledVehicleVisualSystemIrrlicht>();
+            vis_irr->SetWindowTitle("HMMWV acceleration test");
+            vis_irr->SetChaseCamera(ChVector<>(0.0, 0.0, 1.75), 6.0, 0.5);
+            vis_irr->Initialize();
+            vis_irr->AddLightDirectional();
+            vis_irr->AddSkyBox();
+            vis_irr->AddLogo();
+            vis_irr->AttachVehicle(&my_hmmwv.GetVehicle());
+
+            vis = vis_irr;
+#endif
+            break;
+        }
+        default:
+        case ChVisualSystem::Type::VSG: {
+#ifdef CHRONO_VSG
+            auto vis_vsg = chrono_types::make_shared<ChWheeledVehicleVisualSystemVSG>();
+            vis_vsg->SetWindowTitle("HMMWV acceleration test");
+            vis_vsg->SetWindowSize(ChVector2<int>(800, 600));
+            vis_vsg->SetWindowPosition(ChVector2<int>(100, 300));
+            vis_vsg->SetUseSkyBox(true);
+            vis_vsg->SetCameraAngleDeg(40);
+            vis_vsg->SetLightIntensity(1.0f);
+            vis_vsg->SetLightDirection(1.5 * CH_C_PI_2, CH_C_PI_4);
+            vis_vsg->SetChaseCamera(ChVector<>(0.0, 0.0, 1.75), 10.0, 0.5);
+            vis_vsg->AttachVehicle(&my_hmmwv.GetVehicle());
+            vis_vsg->Initialize();
+
+            vis = vis_vsg;
+#endif
+            break;
+        }
+    }
 
     // ---------------
     // Simulation loop
@@ -193,7 +237,7 @@ int main(int argc, char* argv[]) {
     double time = 0;
     bool done = false;
 
-    ChTimer<> timer;
+    ChTimer timer;
     timer.start();
     while (vis->Run()) {
         time = my_hmmwv.GetSystem()->GetChTime();
@@ -205,7 +249,7 @@ int main(int argc, char* argv[]) {
             if (output) {
                 auto wheel_state = my_hmmwv.GetVehicle().GetWheel(0, LEFT)->GetState();
                 auto frc = my_hmmwv.GetVehicle().GetTire(0, LEFT)->ReportTireForce(terrain.get());
-                   
+
                 csv << time << wheel_state.omega;
                 csv << my_hmmwv.GetChassisBody()->TransformDirectionParentToLocal(frc.force);
                 csv << my_hmmwv.GetChassisBody()->TransformDirectionParentToLocal(frc.moment);
@@ -248,7 +292,7 @@ int main(int argc, char* argv[]) {
         driver.Synchronize(time);
         terrain->Synchronize(time);
         my_hmmwv.Synchronize(time, driver_inputs, *terrain);
-        vis->Synchronize("Acceleration test", driver_inputs);
+        vis->Synchronize(time, driver_inputs);
 
         // Advance simulation for one timestep for all modules
         driver.Advance(step_size);
@@ -260,7 +304,7 @@ int main(int argc, char* argv[]) {
         step_number++;
 
         // Draw a coordinate system aligned with the world frame
-        tools::drawCoordsys(vis.get(), ChCoordsys<>(my_hmmwv.GetVehicle().GetPos(), QUNIT), 2);
+        ////tools::drawCoordsys(vis.get(), ChCoordsys<>(my_hmmwv.GetVehicle().GetPos(), QUNIT), 2);
 
         vis->EndScene();
     }

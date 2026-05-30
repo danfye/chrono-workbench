@@ -27,8 +27,8 @@
 #include "chrono_vehicle/ChVehicleModelData.h"
 #include "chrono_vehicle/terrain/RandomSurfaceTerrain.h"
 #ifdef USE_IRRLICHT
-#include "chrono_vehicle/driver/ChIrrGuiDriver.h"
-#include "chrono_vehicle/wheeled_vehicle/utils/ChWheeledVehicleVisualSystemIrrlicht.h"
+    #include "chrono_vehicle/driver/ChInteractiveDriverIRR.h"
+    #include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicleVisualSystemIrrlicht.h"
 #endif
 #include "chrono_vehicle/driver/ChPathFollowerDriver.h"
 #include "chrono/utils/ChUtilsInputOutput.h"
@@ -257,10 +257,12 @@ int main(int argc, char* argv[]) {
     vis->AttachVehicle(&lmtv.GetVehicle());
 
     // Visualization of controller points (sentinel & target)
-    irr::scene::IMeshSceneNode* ballS = vis->GetSceneManager()->addSphereSceneNode(0.1f);
-    irr::scene::IMeshSceneNode* ballT = vis->GetSceneManager()->addSphereSceneNode(0.1f);
-    ballS->getMaterial(0).EmissiveColor = irr::video::SColor(0, 255, 0, 0);
-    ballT->getMaterial(0).EmissiveColor = irr::video::SColor(0, 0, 255, 0);
+    auto ballS = chrono_types::make_shared<ChSphereShape>(0.1);
+    auto ballT = chrono_types::make_shared<ChSphereShape>(0.1);
+    ballS->SetColor(ChColor(1, 0, 0));
+    ballT->SetColor(ChColor(0, 1, 0));
+    int iballS = vis->AddVisualModel(ballS, ChFrame<>());
+    int iballT = vis->AddVisualModel(ballT, ChFrame<>());
 
 #endif
 
@@ -363,10 +365,8 @@ int main(int argc, char* argv[]) {
 
 #ifdef USE_IRRLICHT
         // path visualization
-        const ChVector<>& pS = driver.GetSteeringController().GetSentinelLocation();
-        const ChVector<>& pT = driver.GetSteeringController().GetTargetLocation();
-        ballS->setPosition(irr::core::vector3df((irr::f32)pS.x(), (irr::f32)pS.y(), (irr::f32)pS.z()));
-        ballT->setPosition(irr::core::vector3df((irr::f32)pT.x(), (irr::f32)pT.y(), (irr::f32)pT.z()));
+        vis->UpdateVisualModel(iballS, ChFrame<>(driver.GetSteeringController().GetSentinelLocation()));
+        vis->UpdateVisualModel(iballT, ChFrame<>(driver.GetSteeringController().GetTargetLocation()));
 
         // std::cout<<"Target:\t"<<(irr::f32)pT.x()<<",\t "<<(irr::f32)pT.y()<<",\t "<<(irr::f32)pT.z()<<std::endl;
         // std::cout<<"Vehicle:\t"<<lmtv.GetVehicle().GetChassisBody()->GetPos().x()
@@ -397,7 +397,7 @@ int main(int argc, char* argv[]) {
         lmtv.Synchronize(time, driver_inputs, terrain);
 
 #ifdef USE_IRRLICHT
-        vis->Synchronize("Follower driver", driver_inputs);
+        vis->Synchronize(time, driver_inputs);
 #endif
 
         // Advance simulation for one timestep for all modules
@@ -414,8 +414,8 @@ int main(int argc, char* argv[]) {
             // std::cout << time << std::endl;
             csv << time;
             csv << driver_inputs.m_throttle;
-            csv << lmtv.GetVehicle().GetPowertrain()->GetMotorSpeed();
-            csv << lmtv.GetVehicle().GetPowertrain()->GetCurrentTransmissionGear();
+            csv << lmtv.GetVehicle().GetEngine()->GetMotorSpeed();
+            csv << lmtv.GetVehicle().GetTransmission()->GetCurrentGear();
             for (int axle = 0; axle < 2; axle++) {
                 csv << lmtv.GetVehicle().GetDriveline()->GetSpindleTorque(axle, LEFT);
                 csv << lmtv.GetVehicle().GetDriveline()->GetSpindleTorque(axle, RIGHT);
@@ -435,7 +435,7 @@ int main(int argc, char* argv[]) {
                 }
             }
 
-            csv << lmtv.GetVehicle().GetPowertrain()->GetMotorTorque();
+            csv << lmtv.GetVehicle().GetEngine()->GetOutputMotorshaftTorque();
 
             csv << std::endl;
         }

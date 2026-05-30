@@ -26,11 +26,11 @@
 #include "chrono_vehicle/ChConfigVehicle.h"
 #include "chrono_vehicle/ChVehicleModelData.h"
 #include "chrono_vehicle/terrain/RigidTerrain.h"
-#include "chrono_vehicle/driver/ChIrrGuiDriver.h"
+#include "chrono_vehicle/driver/ChInteractiveDriverIRR.h"
 #include "chrono_vehicle/driver/ChDataDriver.h"
 #include "chrono_vehicle/output/ChVehicleOutputASCII.h"
 
-#include "chrono_vehicle/wheeled_vehicle/utils/ChWheeledVehicleVisualSystemIrrlicht.h"
+#include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicleVisualSystemIrrlicht.h"
 
 #include "chrono_models/vehicle/mrole/mrole.h"
 
@@ -64,8 +64,11 @@ VisualizationType tire_vis_type = VisualizationType::MESH;
 // Collision type for chassis (PRIMITIVES, MESH, or NONE)
 CollisionType chassis_collision_type = CollisionType::NONE;
 
-// Type of powertrain model (SHAFTS, SIMPLE)
-PowertrainModelType powertrain_model = PowertrainModelType::SHAFTS;
+// Type of engine model (SHAFTS, SIMPLE, SIMPLE_MAP)
+EngineModelType engine_model = EngineModelType::SHAFTS;
+
+// Type of transmission model (SHAFTS, SIMPLE_MAP)
+TransmissionModelType transmission_model = TransmissionModelType::SHAFTS;
 
 // Drive type (FWD, RWD, or AWD)
 DrivelineTypeWV drive_type = DrivelineTypeWV::AWD6;
@@ -125,7 +128,8 @@ int main(int argc, char* argv[]) {
     my_mrole.SetChassisCollisionType(chassis_collision_type);
     my_mrole.SetChassisFixed(false);
     my_mrole.SetInitPosition(ChCoordsys<>(initLoc, initRot));
-    my_mrole.SetPowertrainType(powertrain_model);
+    my_mrole.SetEngineType(engine_model);
+    my_mrole.SetTransmissionType(transmission_model);
     my_mrole.SetDriveType(drive_type);
     my_mrole.SetBrakeType(brake_type);
     my_mrole.SetTireType(tire_model);
@@ -219,7 +223,7 @@ int main(int argc, char* argv[]) {
     // ------------------------
 
     // Create the interactive driver system
-    ChIrrGuiDriver driver(*vis);
+    ChInteractiveDriverIRR driver(*vis);
 
     // Set the time response for steering and throttle keyboard inputs.
     double steering_time = 1.0;  // time to go from 0 to +1 (or from 0 to -1)
@@ -233,7 +237,7 @@ int main(int argc, char* argv[]) {
     // force it to playback the driver inputs.
     if (driver_mode == PLAYBACK) {
         driver.SetInputDataFile(driver_file);
-        driver.SetInputMode(ChIrrGuiDriver::InputMode::DATAFILE);
+        driver.SetInputMode(ChInteractiveDriverIRR::InputMode::DATAFILE);
     }
 
     driver.Initialize();
@@ -316,7 +320,7 @@ int main(int argc, char* argv[]) {
         driver.Synchronize(time);
         terrain.Synchronize(time);
         my_mrole.Synchronize(time, driver_inputs, terrain);
-        vis->Synchronize(driver.GetInputModeAsString(), driver_inputs);
+        vis->Synchronize(time, driver_inputs);
 
         // Advance simulation for one timestep for all modules
         driver.Advance(step_size);

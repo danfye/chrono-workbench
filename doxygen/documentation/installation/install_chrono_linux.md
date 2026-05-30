@@ -50,7 +50,7 @@ Debian distributions may need to install the package `cmake-curses-gui` along wi
 
 ## 5) Download the project by cloning the Git repository
 
-Download the Chrono SDK by performing a **clone** of the Git repository on your machine. `git clone -b master git@github.com:projectchrono/chrono.git` will create a copy of the Github repository in the current directory.
+Download the Chrono SDK by performing a **clone** of the Git repository on your machine. `git clone -b main git@github.com:projectchrono/chrono.git` will create a copy of the Github repository in the current directory.
 
 <div class="ce-info">
 The `release` branches contain the various Chrono releases and contains the most stable code. If you are interested in using the latest features as they are developed and before the next official release, you can checkout the `main` branch at any time after the initial cloning: <code>git checkout main</code>.
@@ -81,7 +81,7 @@ The Eigen directory field should be correctly filled in already, assuming the Ei
       - Enable the recommended optional modules: at least tick `ENABLE_MODULE_IRRLICHT` and `ENABLE_MODULE_POSTPROCESS`.<br>
      Other modules might require additional settings and dependencies.
       -  Enter `c` to **Configure** and continue to the next screen.
-      - Verify the path to the Irrlicht root directory and the Irrlicht library are automatically filled in the `IRRLICHT_ROOT` and `IRRLICHT_LIBRARY` fields respectively. If this is not the case, update to match the example below.
+      - Verify the path to the Irrlicht include directory and the Irrlicht library are automatically filled in the `IRRLICHT_INCLUDE_DIR` and `IRRLICHT_LIBRARY` fields respectively. If this is not the case, update to match the example below.
 
 <img src="http://www.projectchrono.org/assets/Images/install_ccmake_2.png" class="img-responsive" width="400">
 

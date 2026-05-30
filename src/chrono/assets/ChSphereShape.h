@@ -20,22 +20,26 @@
 
 namespace chrono {
 
-/// Class for referencing a sphere shape that can be visualized in some way.
+/// A spherical geometric object for collisions and visualization.
 class ChApi ChSphereShape : public ChVisualShape {
   public:
     ChSphereShape();
+    ChSphereShape(double radius);
     ChSphereShape(const geometry::ChSphere& sphere);
 
     ~ChSphereShape() {}
 
-    // Access the sphere geometry.
-    geometry::ChSphere& GetSphereGeometry() { return gsphere; }
+    /// Access the sphere geometry.
+    geometry::ChSphere& GetGeometry() { return gsphere; }
+
+    /// Get the sphere radius.
+    double GetRadius() const { return gsphere.GetRadius(); }
 
     /// Method to allow serialization of transient data to archives.
-    virtual void ArchiveOUT(ChArchiveOut& marchive) override;
+    virtual void ArchiveOut(ChArchiveOut& marchive) override;
 
     /// Method to allow de-serialization of transient data from archives.
-    virtual void ArchiveIN(ChArchiveIn& marchive) override;
+    virtual void ArchiveIn(ChArchiveIn& marchive) override;
 
   private:
     geometry::ChSphere gsphere;

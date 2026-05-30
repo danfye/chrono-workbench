@@ -66,6 +66,9 @@ void ChTrackWheel::Initialize(std::shared_ptr<ChChassis> chassis,
     m_revolute->Initialize(carrier, m_wheel,
                            ChCoordsys<>(wheel_to_abs.GetPos(), wheel_to_abs.GetRot() * Q_from_AngX(CH_C_PI_2)));
     chassis->GetSystem()->AddLink(m_revolute);
+
+    // Mark as initialized
+    m_initialized = true;
 }
 
 void ChTrackWheel::InitializeInertiaProperties() {
@@ -98,11 +101,11 @@ void ChTrackWheel::ExportComponentList(rapidjson::Document& jsonDocument) const 
 
     std::vector<std::shared_ptr<ChBody>> bodies;
     bodies.push_back(m_wheel);
-    ChPart::ExportBodyList(jsonDocument, bodies);
+    ExportBodyList(jsonDocument, bodies);
 
     std::vector<std::shared_ptr<ChLink>> joints;
     joints.push_back(m_revolute);
-    ChPart::ExportJointList(jsonDocument, joints);
+    ExportJointList(jsonDocument, joints);
 }
 
 void ChTrackWheel::Output(ChVehicleOutput& database) const {

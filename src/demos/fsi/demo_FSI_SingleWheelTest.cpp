@@ -31,7 +31,10 @@
 #include "chrono/core/ChTimer.h"
 
 #include "chrono_fsi/ChSystemFsi.h"
-#include "chrono_fsi/ChVisualizationFsi.h"
+
+#ifdef CHRONO_OPENGL
+    #include "chrono_fsi/visualization/ChFsiVisualizationGL.h"
+#endif
 
 #include "chrono_thirdparty/filesystem/path.h"
 
@@ -134,13 +137,19 @@ void CreateSolidPhase(ChSystemSMC& sysMBS, ChSystemFsi& sysFSI) {
     sysMBS.AddBody(ground);
 
     ground->GetCollisionModel()->ClearModel();
-    chrono::utils::AddBoxContainer(ground, cmaterial, ChFrame<>(), ChVector<>(bxDim, byDim, bzDim), 0.1,
-                                   ChVector<int>(0, 0, -1), false);
+    chrono::utils::AddBoxContainer(ground, cmaterial,                              //
+                                   ChFrame<>(ChVector<>(0, 0, bzDim / 2), QUNIT),  //
+                                   ChVector<>(bxDim, byDim, bzDim), 0.1,           //
+                                   ChVector<int>(0, 0, -1),                        //
+                                   false);
     ground->GetCollisionModel()->BuildModel();
     ground->SetCollide(true);
 
     // Add BCE particles attached on the walls into FSI system
-    sysFSI.AddContainerBCE(ground, ChFrame<>(), ChVector<>(bxDim, byDim, 2 * bzDim), ChVector<int>(2, 0, -1));
+    sysFSI.AddBoxContainerBCE(ground,                                     //
+                              ChFrame<>(ChVector<>(0, 0, bzDim), QUNIT),  //
+                              ChVector<>(bxDim, byDim, 2 * bzDim),        //
+                              ChVector<int>(2, 0, -1));
 
     // Create the wheel -- always SECOND body in the system
     auto trimesh = chrono_types::make_shared<ChTriangleMeshConnected>();
@@ -199,7 +208,7 @@ void CreateSolidPhase(ChSystemSMC& sysMBS, ChSystemFsi& sysFSI) {
 
     // Add geometry of the chassis.
     chassis->GetCollisionModel()->ClearModel();
-    chrono::utils::AddBoxGeometry(chassis.get(), cmaterial, ChVector<>(0.1, 0.1, 0.1), ChVector<>(0, 0, 0));
+    chrono::utils::AddBoxGeometry(chassis.get(), cmaterial, ChVector<>(0.2, 0.2, 0.2), ChVector<>(0, 0, 0));
     chassis->GetCollisionModel()->BuildModel();
     sysMBS.AddBody(chassis);
 
@@ -360,14 +369,16 @@ int main(int argc, char* argv[]) {
     }
 
     // Create a run-tme visualizer
-    ChVisualizationFsi fsi_vis(&sysFSI);
+#ifdef CHRONO_OPENGL
+    ChFsiVisualizationGL fsi_vis(&sysFSI);
     if (render) {
         fsi_vis.SetTitle("Chrono::FSI single wheel demo");
-        fsi_vis.SetCameraPosition(ChVector<>(0, -5 * byDim, 5 * bzDim), ChVector<>(0, 0, 0));
+        fsi_vis.AddCamera(ChVector<>(0, -5 * byDim, 5 * bzDim), ChVector<>(0, 0, 0));
         fsi_vis.SetCameraMoveScale(0.05f);
         fsi_vis.EnableBoundaryMarkers(true);
         fsi_vis.Initialize();
     }
+#endif
 
     // Start the simulation
     unsigned int output_steps = (unsigned int)round(1 / (out_fps * dT));
@@ -376,7 +387,7 @@ int main(int argc, char* argv[]) {
     double time = 0.0;
     int current_step = 0;
 
-    ChTimer<> timer;
+    ChTimer timer;
     timer.start();
     while (time < total_time) {
         // Get the infomation of the wheel
@@ -413,10 +424,12 @@ int main(int argc, char* argv[]) {
         }
 
         // Render SPH particles
+#ifdef CHRONO_OPENGL
         if (render && current_step % render_steps == 0) {
             if (!fsi_vis.Render())
                 break;
         }
+#endif
 
         // Call the FSI solver
         sysFSI.DoStepDynamics_FSI();

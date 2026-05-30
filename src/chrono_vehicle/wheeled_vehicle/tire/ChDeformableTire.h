@@ -100,12 +100,6 @@ class CH_VEHICLE_API ChDeformableTire : public ChTire {
     /// Get the load container associated with this tire.
     std::shared_ptr<ChLoadContainer> GetLoadContainer() const { return m_load_container; }
 
-    /// Set the tire pressure.
-    void SetPressure(double pressure) {
-        assert(m_pressure > 0);
-        m_pressure = pressure;
-    }
-
     /// Get the rim radius (inner tire radius).
     virtual double GetRimRadius() const = 0;
 
@@ -115,6 +109,10 @@ class CH_VEHICLE_API ChDeformableTire : public ChTire {
     /// torques in the tire-wheel connections, as applied at the wheel body center of mass.
     /// The force and moment are expressed in the global frame.
     virtual TerrainForce ReportTireForce(ChTerrain* terrain) const override;
+
+    /// Get the tire force and moment expressed in the tire frame.
+    /// Currently *NOT IMPLEMENTED*.
+    virtual TerrainForce ReportTireForce(ChTerrain* terrain, ChCoordsys<>& tire_frame) const override;
 
     /// Add visualization assets for the rigid tire subsystem.
     virtual void AddVisualizationAssets(VisualizationType vis) override final;
@@ -161,8 +159,6 @@ class CH_VEHICLE_API ChDeformableTire : public ChTire {
     bool m_connection_enabled;  ///< enable tire connections to rim
     bool m_pressure_enabled;    ///< enable internal tire pressure
     bool m_contact_enabled;     ///< enable tire-terrain contact
-
-    double m_pressure;  ///< internal tire pressure
 
     ContactSurfaceType m_contact_type;  ///< type of contact surface model (node cloud or mesh)
     double m_contact_node_radius;       ///< node radius (for node cloud contact surface)

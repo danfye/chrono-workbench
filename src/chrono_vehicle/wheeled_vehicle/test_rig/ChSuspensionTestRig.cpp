@@ -82,7 +82,7 @@ float TestRigTerrain::GetCoefficientFriction(const ChVector<>& loc) const {
 
 // =============================================================================
 // Static variables
-const double ChSuspensionTestRigPlatform::m_post_hheight = 0.05;
+const double ChSuspensionTestRigPlatform::m_post_height = 0.1;
 const double ChSuspensionTestRigPlatform::m_post_radius = 0.4;
 
 const double ChSuspensionTestRigPushrod::m_rod_length = 3;
@@ -297,7 +297,7 @@ void ChSuspensionTestRig::Initialize() {
 
 // -----------------------------------------------------------------------------
 
-void ChSuspensionTestRig::SetDriver(std::shared_ptr<ChDriverSTR> driver) {
+void ChSuspensionTestRig::SetDriver(std::shared_ptr<ChSuspensionTestRigDriver> driver) {
     m_driver = driver;
 }
 
@@ -434,6 +434,7 @@ void ChSuspensionTestRig::SetPlotOutput(double output_step) {
     m_plot_output = true;
     m_plot_output_step = output_step;
     m_csv = new utils::CSV_writer(" ");
+    m_csv_lengths.resize(m_naxles);
 }
 
 void ChSuspensionTestRig::CollectPlotData(double time) {
@@ -454,10 +455,15 @@ void ChSuspensionTestRig::CollectPlotData(double time) {
         *m_csv << GetSpindlePos(ia, LEFT) << GetSpindlePos(ia, RIGHT);        // 3 4 5      6 7 8
         *m_csv << GetSpindleLinVel(ia, LEFT) << GetSpindleLinVel(ia, RIGHT);  // 9 10 11    12 13 14
         *m_csv << GetWheelTravel(ia, LEFT) << GetWheelTravel(ia, RIGHT);      // 15         16
-        *m_csv << frc_left.spring_force << frc_right.spring_force;            // 17         18
-        *m_csv << frc_left.shock_force << frc_right.shock_force;              // 19         20
-        *m_csv << gamma_left << gamma_right;                                  // 21         22
-        *m_csv << GetRideHeight(ia);                                          // 23
+        *m_csv << gamma_left << gamma_right;                                  // 17         18
+        *m_csv << GetRideHeight(ia);                                          // 19
+        *m_csv << frc_left.size() << frc_right.size();                        // 20         21
+        for (const auto& item : frc_left)
+            *m_csv << item.force;
+        for (const auto& item : frc_right)
+            *m_csv << item.force;
+
+        m_csv_lengths[ia] = 21 + (int)frc_left.size() + (int)frc_right.size();
     }
 
     *m_csv << std::endl;
@@ -474,36 +480,42 @@ void ChSuspensionTestRig::PlotOutput(const std::string& out_dir, const std::stri
     std::string gplfile = out_dir + "/tmp.gpl";
     postprocess::ChGnuPlot mplot(gplfile.c_str());
 
+    std::string title;
+    int offset = 1;
     for (int ia = 0; ia < m_naxles; ia++) {
-        std::string title = "Suspension test rig - Axle " + std::to_string(ia) + " - Spring forces ";
-        mplot.OutputWindow(3 * ia + 0);
-        mplot.SetTitle(title.c_str());
-        mplot.SetLabelX("wheel travel [m]");
-        mplot.SetLabelY("spring force [N]");
-        mplot.SetCommand("set format y '%4.1e'");
-        mplot.SetCommand("set terminal wxt size 800, 600");
-        mplot.Plot(out_file.c_str(), 1 + 23 * ia + 15, 1 + 23 * ia + 17, "left", " with lines lw 2");
-        mplot.Plot(out_file.c_str(), 1 + 23 * ia + 16, 1 + 23 * ia + 18, "right", " with lines lw 2");
-
-        title = "Suspension test rig - Axle " + std::to_string(ia) + " - Shock forces";
-        mplot.OutputWindow(3 * ia + 1);
-        mplot.SetTitle(title.c_str());
-        mplot.SetLabelX("wheel vertical speed [m/s]");
-        mplot.SetLabelY("shock force [N]");
-        mplot.SetCommand("set format y '%4.1e'");
-        mplot.SetCommand("set terminal wxt size 800, 600");
-        mplot.Plot(out_file.c_str(), 1 + 23 * ia + 11, 1 + 23 * ia + 19, "left", " with lines lw 2");
-        mplot.Plot(out_file.c_str(), 1 + 23 * ia + 14, 1 + 23 * ia + 20, "right", " with lines lw 2");
-
         title = "Suspension test rig - Axle " + std::to_string(ia) + " - Camber angle";
-        mplot.OutputWindow(3 * ia + 2);
+        mplot.OutputWindow(3 * ia + 0);
         mplot.SetTitle(title.c_str());
         mplot.SetLabelX("wheel travel [m]");
         mplot.SetLabelY("camber angle [deg]");
         mplot.SetCommand("set format y '%4.1f'");
         mplot.SetCommand("set terminal wxt size 800, 600");
-        mplot.Plot(out_file.c_str(), 1 + 23 * ia + 15, 1 + 23 * ia + 21, "left", " with lines lw 2");
-        mplot.Plot(out_file.c_str(), 1 + 23 * ia + 16, 1 + 23 * ia + 22, "right", " with lines lw 2");
+        mplot.Plot(out_file.c_str(), offset + 15, offset + 17, "left", " with lines lw 2");
+        mplot.Plot(out_file.c_str(), offset + 16, offset + 18, "right", " with lines lw 2");
+        
+        //// TODO
+        //// Currently hardcoded for certain types of suspensions!!!
+        title = "Suspension test rig - Axle " + std::to_string(ia) + " - TSDA forces ";
+        mplot.OutputWindow(3 * ia + 1);
+        mplot.SetTitle(title.c_str());
+        mplot.SetLabelX("wheel travel [m]");
+        mplot.SetLabelY("spring force [N]");
+        mplot.SetCommand("set format y '%4.1e'");
+        mplot.SetCommand("set terminal wxt size 800, 600");
+        mplot.Plot(out_file.c_str(), offset + 15, offset + 22, "left", " with lines lw 2");
+        mplot.Plot(out_file.c_str(), offset + 16, offset + 24, "right", " with lines lw 2");
+
+        title = "Suspension test rig - Axle " + std::to_string(ia) + " - Shock forces";
+        mplot.OutputWindow(3 * ia + 2);
+        mplot.SetTitle(title.c_str());
+        mplot.SetLabelX("wheel vertical speed [m/s]");
+        mplot.SetLabelY("shock force [N]");
+        mplot.SetCommand("set format y '%4.1e'");
+        mplot.SetCommand("set terminal wxt size 800, 600");
+        mplot.Plot(out_file.c_str(), offset + 11, offset + 23, "left", " with lines lw 2");
+        mplot.Plot(out_file.c_str(), offset + 14, offset + 25, "right", " with lines lw 2");
+
+        offset += m_csv_lengths[ia];
     }
 #endif
 }
@@ -557,9 +569,8 @@ void ChSuspensionTestRigPlatform::InitializeRig() {
         AddPostVisualization(post_L, ChColor(0.1f, 0.8f, 0.15f));
 
         post_L->GetCollisionModel()->ClearModel();
-        post_L->GetCollisionModel()->AddCylinder(post_mat, m_post_radius, m_post_radius, m_post_hheight,
-                                                 ChVector<>(0, 0, -m_post_hheight),
-                                                 ChMatrix33<>(Q_from_AngX(CH_C_PI / 2)));
+        post_L->GetCollisionModel()->AddCylinder(post_mat, m_post_radius, m_post_height,
+                                                 ChVector<>(0, 0, -m_post_height / 2));
         post_L->GetCollisionModel()->BuildModel();
 
         // Create the right post body (red)
@@ -574,9 +585,8 @@ void ChSuspensionTestRigPlatform::InitializeRig() {
         AddPostVisualization(post_R, ChColor(0.8f, 0.1f, 0.1f));
 
         post_R->GetCollisionModel()->ClearModel();
-        post_R->GetCollisionModel()->AddCylinder(post_mat, m_post_radius, m_post_radius, m_post_hheight,
-                                                 ChVector<>(0, 0, -m_post_hheight),
-                                                 ChMatrix33<>(Q_from_AngX(CH_C_PI / 2)));
+        post_R->GetCollisionModel()->AddCylinder(post_mat, m_post_radius, m_post_height,
+                                                 ChVector<>(0, 0, -m_post_height / 2));
         post_R->GetCollisionModel()->BuildModel();
 
         // Create and initialize actuators
@@ -610,28 +620,25 @@ void ChSuspensionTestRigPlatform::AddPostVisualization(std::shared_ptr<ChBody> p
     auto mat = chrono_types::make_shared<ChVisualMaterial>();
     mat->SetDiffuseColor({color.R, color.G, color.B});
 
-    auto base_cyl = chrono_types::make_shared<ChCylinderShape>();
-    base_cyl->GetCylinderGeometry().rad = m_post_radius;
-    base_cyl->GetCylinderGeometry().p1 = ChVector<>(0, 0, 0);
-    base_cyl->GetCylinderGeometry().p2 = ChVector<>(0, 0, -2 * m_post_hheight);
-    base_cyl->AddMaterial(mat);
-    post->AddVisualShape(base_cyl);
+    ChVehicleGeometry::AddVisualizationCylinder(post,                              //
+                                                ChVector<>(0, 0, 0),               //
+                                                ChVector<>(0, 0, -m_post_height),  //
+                                                m_post_radius,                     //
+                                                mat);
 
     // Piston (on post body)
-    auto piston = chrono_types::make_shared<ChCylinderShape>();
-    piston->GetCylinderGeometry().rad = m_post_radius / 6.0;
-    piston->GetCylinderGeometry().p1 = ChVector<>(0, 0, -2 * m_post_hheight);
-    piston->GetCylinderGeometry().p2 = ChVector<>(0, 0, -m_post_hheight * 20.0);
-    piston->AddMaterial(mat);
-    post->AddVisualShape(piston);
+    ChVehicleGeometry::AddVisualizationCylinder(post,                                     //
+                                                ChVector<>(0, 0, -m_post_height),         //
+                                                ChVector<>(0, 0, -10.0 * m_post_height),  //
+                                                m_post_radius / 6.0,                      //
+                                                mat);
 
     // Post sleeve (on chassis/ground body)
-    auto cyl = chrono_types::make_shared<ChCylinderShape>();
-    cyl->GetCylinderGeometry().rad = m_post_radius / 4.0;
-    cyl->GetCylinderGeometry().p1 = post->GetPos() - ChVector<>(0, 0, 16 * m_post_hheight);
-    cyl->GetCylinderGeometry().p2 = post->GetPos() - ChVector<>(0, 0, 32 * m_post_hheight);
-    cyl->AddMaterial(mat);
-    m_vehicle->GetChassisBody()->AddVisualShape(cyl);
+    ChVehicleGeometry::AddVisualizationCylinder(m_vehicle->GetChassisBody(),                            //
+                                                post->GetPos() - ChVector<>(0, 0, 8 * m_post_height),   //
+                                                post->GetPos() - ChVector<>(0, 0, 16 * m_post_height),  //
+                                                m_post_radius / 4.0,                                    //
+                                                mat);
 }
 
 double ChSuspensionTestRigPlatform::CalcDisplacementOffset(int axle) {
@@ -751,12 +758,11 @@ void ChSuspensionTestRigPushrod::InitializeRig() {
 }
 
 void ChSuspensionTestRigPushrod::AddRodVisualization(std::shared_ptr<ChBody> rod, const ChColor& color) {
-    auto cyl = chrono_types::make_shared<ChCylinderShape>();
-    cyl->GetCylinderGeometry().p1 = ChVector<>(0, 0, 0);
-    cyl->GetCylinderGeometry().p2 = ChVector<>(0, 0, -m_rod_length);
-    cyl->GetCylinderGeometry().rad = m_rod_radius;
+    auto cyl = ChVehicleGeometry::AddVisualizationCylinder(rod,                              //
+                                                           ChVector<>(0, 0, 0),              //
+                                                           ChVector<>(0, 0, -m_rod_length),  //
+                                                           m_rod_radius);
     cyl->SetColor(color);
-    rod->AddVisualShape(cyl);
 }
 
 double ChSuspensionTestRigPushrod::CalcDisplacementOffset(int axle) {

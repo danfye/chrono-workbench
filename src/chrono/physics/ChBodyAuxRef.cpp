@@ -21,6 +21,7 @@ using namespace geometry;
 
 // Register into the object factory, to enable run-time dynamic creation and persistence
 CH_FACTORY_REGISTER(ChBodyAuxRef)
+CH_UPCASTING(ChBodyAuxRef, ChBody)
 
 ChBodyAuxRef::ChBodyAuxRef(const ChBodyAuxRef& other) : ChBody(other) {
     auxref_to_cog = other.auxref_to_cog;
@@ -83,12 +84,12 @@ void ChBodyAuxRef::Update(bool update_assets) {
 
 //////// FILE I/O
 
-void ChBodyAuxRef::ArchiveOUT(ChArchiveOut& marchive) {
+void ChBodyAuxRef::ArchiveOut(ChArchiveOut& marchive) {
     // version number
     marchive.VersionWrite<ChBodyAuxRef>();
 
     // serialize parent class
-    ChBody::ArchiveOUT(marchive);
+    ChBody::ArchiveOut(marchive);
 
     // serialize all member data:
     marchive << CHNVP(auxref_to_cog);
@@ -96,16 +97,31 @@ void ChBodyAuxRef::ArchiveOUT(ChArchiveOut& marchive) {
 }
 
 /// Method to allow de serialization of transient data from archives.
-void ChBodyAuxRef::ArchiveIN(ChArchiveIn& marchive) {
+void ChBodyAuxRef::ArchiveIn(ChArchiveIn& marchive) {
     // version number
     /*int version =*/ marchive.VersionRead<ChBodyAuxRef>();
 
     // deserialize parent class
-    ChBody::ArchiveIN(marchive);
+    ChBody::ArchiveIn(marchive);
 
     // stream in all member data:
     marchive >> CHNVP(auxref_to_cog);
     marchive >> CHNVP(auxref_to_abs);
+
+
+    // INITIALIZATION-BY-METHODS
+    if (marchive.CanTolerateMissingTokens()){
+        bool temp_tolerate_missing_tokens = marchive.GetTolerateMissingTokens();
+        marchive.TryTolerateMissingTokens(true);
+
+        ChVector<> _c_SetFrame_COG_to_REF__ChFrame__ChVector;
+        ChQuaternion<> _c_SetFrame_COG_to_REF__ChFrame__ChQuaternion;
+        if (marchive.in(CHNVP(_c_SetFrame_COG_to_REF__ChFrame__ChVector)) &&
+            marchive.in(CHNVP(_c_SetFrame_COG_to_REF__ChFrame__ChQuaternion)))
+            this->SetFrame_COG_to_REF(ChFrame<>(_c_SetFrame_COG_to_REF__ChFrame__ChVector, _c_SetFrame_COG_to_REF__ChFrame__ChQuaternion));
+
+        marchive.TryTolerateMissingTokens(temp_tolerate_missing_tokens);
+    }
 }
 
 }  // end namespace chrono

@@ -39,7 +39,9 @@ TranslationalDamperSuspension::TranslationalDamperSuspension(const std::string& 
     GetLog() << "Loaded JSON: " << filename.c_str() << "\n";
 }
 
-TranslationalDamperSuspension::TranslationalDamperSuspension(const rapidjson::Document& d, bool has_shock, bool lock_arm)
+TranslationalDamperSuspension::TranslationalDamperSuspension(const rapidjson::Document& d,
+                                                             bool has_shock,
+                                                             bool lock_arm)
     : ChTranslationalDamperSuspension("", has_shock, lock_arm), m_spring_torqueCB(nullptr), m_shock_forceCB(nullptr) {
     Create(d);
 }
@@ -72,13 +74,13 @@ void TranslationalDamperSuspension::Create(const rapidjson::Document& d) {
 
     if (d["Torsional Spring"].HasMember("Spring Constant")) {
         m_spring_torqueCB = chrono_types::make_shared<LinearSpringTorque>(
-            d["Torsional Spring"]["Spring Constant"].GetDouble(), m_spring_rest_angle, preload);
+            d["Torsional Spring"]["Spring Constant"].GetDouble(), preload);
     } else {
         int num_points = d["Torsional Spring"]["Curve Data"].Size();
-        auto springTorqueCB = chrono_types::make_shared<MapSpringTorque>(m_spring_rest_angle, preload);
+        auto springTorqueCB = chrono_types::make_shared<NonlinearSpringTorque>(preload);
         for (int i = 0; i < num_points; i++) {
-            springTorqueCB->add_point(d["Torsional Spring"]["Curve Data"][i][0u].GetDouble(),
-                                      d["Torsional Spring"]["Curve Data"][i][1u].GetDouble());
+            springTorqueCB->add_pointK(d["Torsional Spring"]["Curve Data"][i][0u].GetDouble(),
+                                       d["Torsional Spring"]["Curve Data"][i][1u].GetDouble());
         }
         m_spring_torqueCB = springTorqueCB;
     }
@@ -99,10 +101,10 @@ void TranslationalDamperSuspension::Create(const rapidjson::Document& d) {
         m_shock_forceCB = chrono_types::make_shared<LinearDamperForce>(shock_c);
     } else {
         int num_points = d["Damper"]["Curve Data"].Size();
-        auto shockForceCB = chrono_types::make_shared<MapDamperForce>();
+        auto shockForceCB = chrono_types::make_shared<NonlinearDamperForce>();
         for (int i = 0; i < num_points; i++) {
-            shockForceCB->add_point(d["Damper"]["Curve Data"][i][0u].GetDouble(),
-                                    d["Damper"]["Curve Data"][i][1u].GetDouble());
+            shockForceCB->add_pointC(d["Damper"]["Curve Data"][i][0u].GetDouble(),
+                                     d["Damper"]["Curve Data"][i][1u].GetDouble());
         }
         m_shock_forceCB = shockForceCB;
     }

@@ -92,8 +92,8 @@ class CH_VEHICLE_API ChSingleWishbone : public ChSuspension {
     /// Get a handle to the specified shock (damper) element.
     std::shared_ptr<ChLinkTSDA> GetShock(VehicleSide side) const { return m_shock[side]; }
 
-    /// Return current suspension forces (spring and shock) on the specified side.
-    virtual ChSuspension::Force ReportSuspensionForce(VehicleSide side) const override;
+    /// Return current suspension TSDA force information on the specified side.
+    virtual std::vector<ForceTSDA> ReportSuspensionForce(VehicleSide side) const override;
 
     /// Get the force in the shock (damper) element.
     double GetShockForce(VehicleSide side) const { return m_shock[side]->GetForce(); }
@@ -187,8 +187,8 @@ class CH_VEHICLE_API ChSingleWishbone : public ChSuspension {
     /// Return the radius of the tierod body (visualization only).
     virtual double getTierodRadius() const { return 0; }
 
-    /// Return the free (rest) length of the spring element.
-    virtual double getSpringRestLength() const = 0;
+    /// Return the free (rest) length of the spring-damper element.
+    virtual double getShockRestLength() const = 0;
     /// Return the functor object for spring-damper force.
     virtual std::shared_ptr<ChLinkTSDA::ForceFunctor> getShockForceFunctor() const = 0;
 

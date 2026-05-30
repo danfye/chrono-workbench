@@ -86,7 +86,9 @@ void Sedan::Initialize() {
     }
 
     // Create and initialize the powertrain system
-    auto powertrain = chrono_types::make_shared<Sedan_SimpleMapPowertrain>("Powertrain");
+    auto engine = chrono_types::make_shared<Sedan_EngineSimpleMap>("Engine");
+    auto transmission = chrono_types::make_shared<Sedan_AutomaticTransmissionSimpleMap>("Transmission");
+    auto powertrain = chrono_types::make_shared<ChPowertrainAssembly>(engine, transmission);
     m_vehicle->InitializePowertrain(powertrain);
 
     // Create the tires and set parameters depending on type.
@@ -99,22 +101,6 @@ void Sedan::Initialize() {
             auto tire_FR = chrono_types::make_shared<Sedan_RigidTire>("FR", use_mesh);
             auto tire_RL = chrono_types::make_shared<Sedan_RigidTire>("RL", use_mesh);
             auto tire_RR = chrono_types::make_shared<Sedan_RigidTire>("RR", use_mesh);
-
-            m_vehicle->InitializeTire(tire_FL, m_vehicle->GetAxle(0)->m_wheels[LEFT], VisualizationType::NONE);
-            m_vehicle->InitializeTire(tire_FR, m_vehicle->GetAxle(0)->m_wheels[RIGHT], VisualizationType::NONE);
-            m_vehicle->InitializeTire(tire_RL, m_vehicle->GetAxle(1)->m_wheels[LEFT], VisualizationType::NONE);
-            m_vehicle->InitializeTire(tire_RR, m_vehicle->GetAxle(1)->m_wheels[RIGHT], VisualizationType::NONE);
-
-            m_tire_mass = tire_FL->GetMass();
-
-            break;
-        }
-
-        case TireModelType::TMEASY: {
-            auto tire_FL = chrono_types::make_shared<Sedan_TMeasyTire>("FL");
-            auto tire_FR = chrono_types::make_shared<Sedan_TMeasyTire>("FR");
-            auto tire_RL = chrono_types::make_shared<Sedan_TMeasyTire>("RL");
-            auto tire_RR = chrono_types::make_shared<Sedan_TMeasyTire>("RR");
 
             m_vehicle->InitializeTire(tire_FL, m_vehicle->GetAxle(0)->m_wheels[LEFT], VisualizationType::NONE);
             m_vehicle->InitializeTire(tire_FR, m_vehicle->GetAxle(0)->m_wheels[RIGHT], VisualizationType::NONE);
@@ -141,9 +127,38 @@ void Sedan::Initialize() {
 
             break;
         }
+        case TireModelType::TMEASY: {
+            auto tire_FL = chrono_types::make_shared<Sedan_TMeasyTire>("FL");
+            auto tire_FR = chrono_types::make_shared<Sedan_TMeasyTire>("FR");
+            auto tire_RL = chrono_types::make_shared<Sedan_TMeasyTire>("RL");
+            auto tire_RR = chrono_types::make_shared<Sedan_TMeasyTire>("RR");
 
-        default:
+            m_vehicle->InitializeTire(tire_FL, m_vehicle->GetAxle(0)->m_wheels[LEFT], VisualizationType::NONE);
+            m_vehicle->InitializeTire(tire_FR, m_vehicle->GetAxle(0)->m_wheels[RIGHT], VisualizationType::NONE);
+            m_vehicle->InitializeTire(tire_RL, m_vehicle->GetAxle(1)->m_wheels[LEFT], VisualizationType::NONE);
+            m_vehicle->InitializeTire(tire_RR, m_vehicle->GetAxle(1)->m_wheels[RIGHT], VisualizationType::NONE);
+
+            m_tire_mass = tire_FL->GetMass();
+
             break;
+        }
+        default:
+            GetLog() << "Unsupported Tire Model Type! Switching to TMeasy.\n";
+        case TireModelType::TMSIMPLE: {
+            auto tire_FL = chrono_types::make_shared<Sedan_TMsimpleTire>("FL");
+            auto tire_FR = chrono_types::make_shared<Sedan_TMsimpleTire>("FR");
+            auto tire_RL = chrono_types::make_shared<Sedan_TMsimpleTire>("RL");
+            auto tire_RR = chrono_types::make_shared<Sedan_TMsimpleTire>("RR");
+
+            m_vehicle->InitializeTire(tire_FL, m_vehicle->GetAxle(0)->m_wheels[LEFT], VisualizationType::NONE);
+            m_vehicle->InitializeTire(tire_FR, m_vehicle->GetAxle(0)->m_wheels[RIGHT], VisualizationType::NONE);
+            m_vehicle->InitializeTire(tire_RL, m_vehicle->GetAxle(1)->m_wheels[LEFT], VisualizationType::NONE);
+            m_vehicle->InitializeTire(tire_RR, m_vehicle->GetAxle(1)->m_wheels[RIGHT], VisualizationType::NONE);
+
+            m_tire_mass = tire_FL->GetMass();
+
+            break;
+        }
     }
 
     for (auto& axle : m_vehicle->GetAxles()) {

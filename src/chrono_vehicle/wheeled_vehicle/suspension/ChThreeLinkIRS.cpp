@@ -54,11 +54,11 @@ ChThreeLinkIRS::~ChThreeLinkIRS() {
             sys->Remove(m_arm[i]);
             sys->Remove(m_upper[i]);
             sys->Remove(m_lower[i]);
-            sys->Remove(m_sphericalArm[i]);
-            sys->Remove(m_sphericalUpper[i]);
-            sys->Remove(m_sphericalLower[i]);
-            sys->Remove(m_universalUpper[i]);
-            sys->Remove(m_universalLower[i]);
+            ChChassis::RemoveJoint(m_sphericalArm[i]);
+            ChChassis::RemoveJoint(m_sphericalUpper[i]);
+            ChChassis::RemoveJoint(m_sphericalLower[i]);
+            ChChassis::RemoveJoint(m_universalUpper[i]);
+            ChChassis::RemoveJoint(m_universalLower[i]);
             sys->Remove(m_shock[i]);
             sys->Remove(m_spring[i]);
         }
@@ -73,6 +73,8 @@ void ChThreeLinkIRS::Initialize(std::shared_ptr<ChChassis> chassis,
                                 const ChVector<>& location,
                                 double left_ang_vel,
                                 double right_ang_vel) {
+    ChSuspension::Initialize(chassis, subchassis, steering, location, left_ang_vel, right_ang_vel);
+
     m_parent = chassis;
     m_rel_loc = location;
 
@@ -102,20 +104,20 @@ void ChThreeLinkIRS::Initialize(std::shared_ptr<ChChassis> chassis,
     }
 
     // Initialize left and right sides.
-    InitializeSide(LEFT, chassis->GetBody(), m_pointsL, m_dirsL, left_ang_vel);
-    InitializeSide(RIGHT, chassis->GetBody(), m_pointsR, m_dirsR, right_ang_vel);
+    InitializeSide(LEFT, chassis, m_pointsL, m_dirsL, left_ang_vel);
+    InitializeSide(RIGHT, chassis, m_pointsR, m_dirsR, right_ang_vel);
 }
 
 void ChThreeLinkIRS::InitializeSide(VehicleSide side,
-                                    std::shared_ptr<ChBodyAuxRef> chassis,
-                                    const std::vector<ChVector<> >& points,
+                                    std::shared_ptr<ChChassis> chassis,
+                                    const std::vector<ChVector<>>& points,
                                     const std::vector<ChVector<>>& dirs,
                                     double ang_vel) {
     std::string suffix = (side == LEFT) ? "_L" : "_R";
 
     // Chassis orientation (expressed in absolute frame)
     // Recall that the suspension reference frame is aligned with the chassis.
-    ChQuaternion<> chassisRot = chassis->GetFrame_REF_to_abs().GetRot();
+    ChQuaternion<> chassisRot = chassis->GetBody()->GetFrame_REF_to_abs().GetRot();
 
     // Spindle orientation (based on camber and toe angles)
     double sign = (side == LEFT) ? -1 : +1;
@@ -191,21 +193,21 @@ void ChThreeLinkIRS::InitializeSide(VehicleSide side,
     chassis->GetSystem()->AddLink(m_revolute[side]);
 
     // Create and initialize the spherical joint between chassis and arm.
-    m_sphericalArm[side] = chrono_types::make_shared<ChLinkLockSpherical>();
-    m_sphericalArm[side]->SetNameString(m_name + "_sphericalArm" + suffix);
-    m_sphericalArm[side]->Initialize(chassis, m_arm[side], ChCoordsys<>(points[TA_C], QUNIT));
-    chassis->GetSystem()->AddLink(m_sphericalArm[side]);
+    m_sphericalArm[side] = chrono_types::make_shared<ChVehicleJoint>(
+        ChVehicleJoint::Type::SPHERICAL, m_name + "_sphericalArm" + suffix, chassis->GetBody(), m_arm[side],
+        ChCoordsys<>(points[TA_C], QUNIT), getArmChassisBushingData());
+    chassis->AddJoint(m_sphericalArm[side]);
 
     // Create and initialize the spherical joints between links and arm.
-    m_sphericalUpper[side] = chrono_types::make_shared<ChLinkLockSpherical>();
-    m_sphericalUpper[side]->SetNameString(m_name + "_sphericalUpper" + suffix);
-    m_sphericalUpper[side]->Initialize(m_upper[side], m_arm[side], ChCoordsys<>(points[UL_A], QUNIT));
-    chassis->GetSystem()->AddLink(m_sphericalUpper[side]);
+    m_sphericalUpper[side] = chrono_types::make_shared<ChVehicleJoint>(
+        ChVehicleJoint::Type::SPHERICAL, m_name + "_sphericalUpper" + suffix, m_upper[side], m_arm[side],
+        ChCoordsys<>(points[UL_A], QUNIT), getArmUpperBushingData());
+    chassis->AddJoint(m_sphericalUpper[side]);
 
-    m_sphericalLower[side] = chrono_types::make_shared<ChLinkLockSpherical>();
-    m_sphericalLower[side]->SetNameString(m_name + "_sphericalLower" + suffix);
-    m_sphericalLower[side]->Initialize(m_lower[side], m_arm[side], ChCoordsys<>(points[LL_A], QUNIT));
-    chassis->GetSystem()->AddLink(m_sphericalLower[side]);
+    m_sphericalLower[side] = chrono_types::make_shared<ChVehicleJoint>(
+        ChVehicleJoint::Type::SPHERICAL, m_name + "_sphericalLower" + suffix, m_lower[side], m_arm[side],
+        ChCoordsys<>(points[LL_A], QUNIT), getArmLowerBushingData());
+    chassis->AddJoint(m_sphericalLower[side]);
 
     // Create and initialize the universal joints between links and chassis.
     u = dirs[UNIV_AXIS_UPPER];
@@ -214,10 +216,10 @@ void ChThreeLinkIRS::InitializeSide(VehicleSide side,
     v = Vcross(w, u);
     rot.Set_A_axis(u, v, w);
 
-    m_universalUpper[side] = chrono_types::make_shared<ChLinkUniversal>();
-    m_universalUpper[side]->SetNameString(m_name + "_universalUpper" + suffix);
-    m_universalUpper[side]->Initialize(m_upper[side], chassis, ChFrame<>(points[UL_C], rot));
-    chassis->GetSystem()->AddLink(m_universalUpper[side]);
+    m_universalUpper[side] = chrono_types::make_shared<ChVehicleJoint>(
+        ChVehicleJoint::Type::UNIVERSAL, m_name + "_universalUpper" + suffix, m_upper[side], chassis->GetBody(),
+        ChCoordsys<>(points[UL_C], rot.Get_A_quaternion()), getChassisUpperBushingData());
+    chassis->AddJoint(m_universalUpper[side]);
 
     u = dirs[UNIV_AXIS_LOWER];
     w = Vcross(u, ChVector<>(0, 0, 1));
@@ -225,21 +227,22 @@ void ChThreeLinkIRS::InitializeSide(VehicleSide side,
     v = Vcross(w, u);
     rot.Set_A_axis(u, v, w);
 
-    m_universalLower[side] = chrono_types::make_shared<ChLinkUniversal>();
-    m_universalLower[side]->SetNameString(m_name + "_universalLower" + suffix);
-    m_universalLower[side]->Initialize(m_lower[side], chassis, ChFrame<>(points[LL_C], rot));
-    chassis->GetSystem()->AddLink(m_universalLower[side]);
+    m_universalLower[side] = chrono_types::make_shared<ChVehicleJoint>(
+        ChVehicleJoint::Type::UNIVERSAL, m_name + "_universalLower" + suffix, m_lower[side], chassis->GetBody(),
+        ChCoordsys<>(points[LL_C], rot.Get_A_quaternion()), getChassisLowerBushingData());
+    chassis->AddJoint(m_universalLower[side]);
 
     // Create and initialize the spring/damper.
     m_shock[side] = chrono_types::make_shared<ChLinkTSDA>();
     m_shock[side]->SetNameString(m_name + "_shock" + suffix);
-    m_shock[side]->Initialize(chassis, m_arm[side], false, points[SHOCK_C], points[SHOCK_A]);
+    m_shock[side]->Initialize(chassis->GetBody(), m_arm[side], false, points[SHOCK_C], points[SHOCK_A]);
+    m_shock[side]->SetRestLength(getShockRestLength());
     m_shock[side]->RegisterForceFunctor(getShockForceFunctor());
     chassis->GetSystem()->AddLink(m_shock[side]);
 
     m_spring[side] = chrono_types::make_shared<ChLinkTSDA>();
     m_spring[side]->SetNameString(m_name + "_spring" + suffix);
-    m_spring[side]->Initialize(chassis, m_arm[side], false, points[SPRING_C], points[SPRING_A]);
+    m_spring[side]->Initialize(chassis->GetBody(), m_arm[side], false, points[SPRING_C], points[SPRING_A]);
     m_spring[side]->SetRestLength(getSpringRestLength());
     m_spring[side]->RegisterForceFunctor(getSpringForceFunctor());
     chassis->GetSystem()->AddLink(m_spring[side]);
@@ -257,7 +260,6 @@ void ChThreeLinkIRS::InitializeSide(VehicleSide side,
     m_axle_to_spindle[side]->Initialize(m_axle[side], m_spindle[side], ChVector<>(0, -1, 0));
     chassis->GetSystem()->Add(m_axle_to_spindle[side]);
 }
-
 
 void ChThreeLinkIRS::InitializeInertiaProperties() {
     m_mass = 2 * (getSpindleMass() + getArmMass() + getLowerLinkMass() + getUpperLinkMass());
@@ -299,18 +301,15 @@ double ChThreeLinkIRS::GetTrack() {
 // -----------------------------------------------------------------------------
 // Return current suspension forces
 // -----------------------------------------------------------------------------
-ChSuspension::Force ChThreeLinkIRS::ReportSuspensionForce(VehicleSide side) const {
-    ChSuspension::Force force;
+std::vector<ChSuspension::ForceTSDA> ChThreeLinkIRS::ReportSuspensionForce(VehicleSide side) const {
+    std::vector<ChSuspension::ForceTSDA> forces(2);
 
-    force.spring_force = m_spring[side]->GetForce();
-    force.spring_length = m_spring[side]->GetLength();
-    force.spring_velocity = m_spring[side]->GetVelocity();
+    forces[0] = ChSuspension::ForceTSDA("Spring", m_spring[side]->GetForce(), m_spring[side]->GetLength(),
+                                        m_spring[side]->GetVelocity());
+    forces[1] = ChSuspension::ForceTSDA("Shock", m_shock[side]->GetForce(), m_shock[side]->GetLength(),
+                                        m_shock[side]->GetVelocity());
 
-    force.shock_force = m_shock[side]->GetForce();
-    force.shock_length = m_shock[side]->GetLength();
-    force.shock_velocity = m_shock[side]->GetVelocity();
-
-    return force;
+    return forces;
 }
 
 // -----------------------------------------------------------------------------
@@ -427,13 +426,12 @@ void ChThreeLinkIRS::RemoveVisualizationAssets() {
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
 void ChThreeLinkIRS::AddVisualizationArm(std::shared_ptr<ChBody> body,
-    const ChVector<>& pt_C,
-    const ChVector<>& pt_S,
-    const ChVector<>& pt_CM,
-    const ChVector<>& pt_U,
-    const ChVector<>& pt_L,
-    double radius)
-{
+                                         const ChVector<>& pt_C,
+                                         const ChVector<>& pt_S,
+                                         const ChVector<>& pt_CM,
+                                         const ChVector<>& pt_U,
+                                         const ChVector<>& pt_L,
+                                         double radius) {
     static const double threshold2 = 1e-6;
 
     // Express hardpoint locations in body frame.
@@ -443,32 +441,16 @@ void ChThreeLinkIRS::AddVisualizationArm(std::shared_ptr<ChBody> body,
     ChVector<> p_U = body->TransformPointParentToLocal(pt_U);
     ChVector<> p_L = body->TransformPointParentToLocal(pt_L);
 
-    auto cyl_1 = chrono_types::make_shared<ChCylinderShape>();
-    cyl_1->GetCylinderGeometry().p1 = p_C;
-    cyl_1->GetCylinderGeometry().p2 = p_CM;
-    cyl_1->GetCylinderGeometry().rad = radius;
-    body->AddVisualShape(cyl_1);
+    ChVehicleGeometry::AddVisualizationCylinder(body, p_C, p_CM, radius);
 
-    auto cyl_2 = chrono_types::make_shared<ChCylinderShape>();
-    cyl_2->GetCylinderGeometry().p1 = p_S;
-    cyl_2->GetCylinderGeometry().p2 = p_CM;
-    cyl_2->GetCylinderGeometry().rad = radius;
-    body->AddVisualShape(cyl_2);
+    ChVehicleGeometry::AddVisualizationCylinder(body, p_S, p_CM, radius);
 
     if ((p_S - p_U).Length2() > threshold2) {
-        auto cyl_U = chrono_types::make_shared<ChCylinderShape>();
-        cyl_U->GetCylinderGeometry().p1 = p_S;
-        cyl_U->GetCylinderGeometry().p2 = p_U;
-        cyl_U->GetCylinderGeometry().rad = radius;
-        body->AddVisualShape(cyl_U);
+        ChVehicleGeometry::AddVisualizationCylinder(body, p_S, p_U, radius);
     }
 
     if ((p_S - p_L).Length2() > threshold2) {
-        auto cyl_L = chrono_types::make_shared<ChCylinderShape>();
-        cyl_L->GetCylinderGeometry().p1 = p_S;
-        cyl_L->GetCylinderGeometry().p2 = p_L;
-        cyl_L->GetCylinderGeometry().rad = radius;
-        body->AddVisualShape(cyl_L);
+        ChVehicleGeometry::AddVisualizationCylinder(body, p_S, p_L, radius);
     }
 }
 
@@ -482,17 +464,8 @@ void ChThreeLinkIRS::AddVisualizationLink(std::shared_ptr<ChBody> body,
     ChVector<> p_2 = body->TransformPointParentToLocal(pt_2);
     ChVector<> p_CM = body->TransformPointParentToLocal(pt_CM);
 
-    auto cyl_1 = chrono_types::make_shared<ChCylinderShape>();
-    cyl_1->GetCylinderGeometry().p1 = p_1;
-    cyl_1->GetCylinderGeometry().p2 = p_CM;
-    cyl_1->GetCylinderGeometry().rad = radius;
-    body->AddVisualShape(cyl_1);
-
-    auto cyl_2 = chrono_types::make_shared<ChCylinderShape>();
-    cyl_2->GetCylinderGeometry().p1 = p_2;
-    cyl_2->GetCylinderGeometry().p2 = p_CM;
-    cyl_2->GetCylinderGeometry().rad = radius;
-    body->AddVisualShape(cyl_2);
+    ChVehicleGeometry::AddVisualizationCylinder(body, p_1, p_CM, radius);
+    ChVehicleGeometry::AddVisualizationCylinder(body, p_2, p_CM, radius);
 }
 
 // -----------------------------------------------------------------------------
@@ -509,34 +482,46 @@ void ChThreeLinkIRS::ExportComponentList(rapidjson::Document& jsonDocument) cons
     bodies.push_back(m_upper[1]);
     bodies.push_back(m_lower[0]);
     bodies.push_back(m_lower[1]);
-    ChPart::ExportBodyList(jsonDocument, bodies);
+    ExportBodyList(jsonDocument, bodies);
 
     std::vector<std::shared_ptr<ChShaft>> shafts;
     shafts.push_back(m_axle[0]);
     shafts.push_back(m_axle[1]);
-    ChPart::ExportShaftList(jsonDocument, shafts);
+    ExportShaftList(jsonDocument, shafts);
 
     std::vector<std::shared_ptr<ChLink>> joints;
+    std::vector<std::shared_ptr<ChLoadBodyBody>> bushings;
     joints.push_back(m_revolute[0]);
     joints.push_back(m_revolute[1]);
-    joints.push_back(m_sphericalArm[0]);
-    joints.push_back(m_sphericalArm[1]);
-    joints.push_back(m_sphericalUpper[0]);
-    joints.push_back(m_sphericalUpper[1]);
-    joints.push_back(m_sphericalLower[0]);
-    joints.push_back(m_sphericalLower[1]);
-    joints.push_back(m_universalUpper[0]);
-    joints.push_back(m_universalUpper[1]);
-    joints.push_back(m_universalLower[0]);
-    joints.push_back(m_universalLower[1]);
-    ChPart::ExportJointList(jsonDocument, joints);
+    m_sphericalArm[0]->IsKinematic() ? joints.push_back(m_sphericalArm[0]->GetAsLink())
+                                     : bushings.push_back(m_sphericalArm[0]->GetAsBushing());
+    m_sphericalArm[1]->IsKinematic() ? joints.push_back(m_sphericalArm[1]->GetAsLink())
+                                     : bushings.push_back(m_sphericalArm[1]->GetAsBushing());
+    m_sphericalUpper[0]->IsKinematic() ? joints.push_back(m_sphericalUpper[0]->GetAsLink())
+                                       : bushings.push_back(m_sphericalUpper[0]->GetAsBushing());
+    m_sphericalUpper[1]->IsKinematic() ? joints.push_back(m_sphericalUpper[1]->GetAsLink())
+                                       : bushings.push_back(m_sphericalUpper[1]->GetAsBushing());
+    m_sphericalLower[0]->IsKinematic() ? joints.push_back(m_sphericalLower[0]->GetAsLink())
+                                       : bushings.push_back(m_sphericalLower[0]->GetAsBushing());
+    m_sphericalLower[1]->IsKinematic() ? joints.push_back(m_sphericalLower[1]->GetAsLink())
+                                       : bushings.push_back(m_sphericalLower[1]->GetAsBushing());
+    m_universalUpper[0]->IsKinematic() ? joints.push_back(m_universalUpper[0]->GetAsLink())
+                                       : bushings.push_back(m_universalUpper[0]->GetAsBushing());
+    m_universalUpper[1]->IsKinematic() ? joints.push_back(m_universalUpper[1]->GetAsLink())
+                                       : bushings.push_back(m_universalUpper[1]->GetAsBushing());
+    m_universalLower[0]->IsKinematic() ? joints.push_back(m_universalLower[0]->GetAsLink())
+                                       : bushings.push_back(m_universalLower[0]->GetAsBushing());
+    m_universalLower[1]->IsKinematic() ? joints.push_back(m_universalLower[1]->GetAsLink())
+                                       : bushings.push_back(m_universalLower[1]->GetAsBushing());
+    ExportJointList(jsonDocument, joints);
+    ExportBodyLoadList(jsonDocument, bushings);
 
     std::vector<std::shared_ptr<ChLinkTSDA>> springs;
     springs.push_back(m_spring[0]);
     springs.push_back(m_spring[1]);
     springs.push_back(m_shock[0]);
     springs.push_back(m_shock[1]);
-    ChPart::ExportLinSpringList(jsonDocument, springs);
+    ExportLinSpringList(jsonDocument, springs);
 }
 
 void ChThreeLinkIRS::Output(ChVehicleOutput& database) const {
@@ -560,19 +545,31 @@ void ChThreeLinkIRS::Output(ChVehicleOutput& database) const {
     database.WriteShafts(shafts);
 
     std::vector<std::shared_ptr<ChLink>> joints;
+    std::vector<std::shared_ptr<ChLoadBodyBody>> bushings;
     joints.push_back(m_revolute[0]);
     joints.push_back(m_revolute[1]);
-    joints.push_back(m_sphericalArm[0]);
-    joints.push_back(m_sphericalArm[1]);
-    joints.push_back(m_sphericalUpper[0]);
-    joints.push_back(m_sphericalUpper[1]);
-    joints.push_back(m_sphericalLower[0]);
-    joints.push_back(m_sphericalLower[1]);
-    joints.push_back(m_universalUpper[0]);
-    joints.push_back(m_universalUpper[1]);
-    joints.push_back(m_universalLower[0]);
-    joints.push_back(m_universalLower[1]);
+    m_sphericalArm[0]->IsKinematic() ? joints.push_back(m_sphericalArm[0]->GetAsLink())
+                                     : bushings.push_back(m_sphericalArm[0]->GetAsBushing());
+    m_sphericalArm[1]->IsKinematic() ? joints.push_back(m_sphericalArm[1]->GetAsLink())
+                                     : bushings.push_back(m_sphericalArm[1]->GetAsBushing());
+    m_sphericalUpper[0]->IsKinematic() ? joints.push_back(m_sphericalUpper[0]->GetAsLink())
+                                       : bushings.push_back(m_sphericalUpper[0]->GetAsBushing());
+    m_sphericalUpper[1]->IsKinematic() ? joints.push_back(m_sphericalUpper[1]->GetAsLink())
+                                       : bushings.push_back(m_sphericalUpper[1]->GetAsBushing());
+    m_sphericalLower[0]->IsKinematic() ? joints.push_back(m_sphericalLower[0]->GetAsLink())
+                                       : bushings.push_back(m_sphericalLower[0]->GetAsBushing());
+    m_sphericalLower[1]->IsKinematic() ? joints.push_back(m_sphericalLower[1]->GetAsLink())
+                                       : bushings.push_back(m_sphericalLower[1]->GetAsBushing());
+    m_universalUpper[0]->IsKinematic() ? joints.push_back(m_universalUpper[0]->GetAsLink())
+                                       : bushings.push_back(m_universalUpper[0]->GetAsBushing());
+    m_universalUpper[1]->IsKinematic() ? joints.push_back(m_universalUpper[1]->GetAsLink())
+                                       : bushings.push_back(m_universalUpper[1]->GetAsBushing());
+    m_universalLower[0]->IsKinematic() ? joints.push_back(m_universalLower[0]->GetAsLink())
+                                       : bushings.push_back(m_universalLower[0]->GetAsBushing());
+    m_universalLower[1]->IsKinematic() ? joints.push_back(m_universalLower[1]->GetAsLink())
+                                       : bushings.push_back(m_universalLower[1]->GetAsBushing());
     database.WriteJoints(joints);
+    database.WriteBodyLoads(bushings);
 
     std::vector<std::shared_ptr<ChLinkTSDA>> springs;
     springs.push_back(m_spring[0]);

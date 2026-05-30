@@ -379,7 +379,7 @@ class ChFrame {
     }
 
     /// Method to allow serialization of transient data to archives.
-    virtual void ArchiveOUT(ChArchiveOut& marchive) {
+    virtual void ArchiveOut(ChArchiveOut& marchive) {
         // suggested: use versioning
         marchive.VersionWrite<ChFrame<double>>();
         // stream out all member data
@@ -387,12 +387,29 @@ class ChFrame {
     }
 
     /// Method to allow de-serialization of transient data from archives.
-    virtual void ArchiveIN(ChArchiveIn& marchive) {
+    virtual void ArchiveIn(ChArchiveIn& marchive) {
         // suggested: use versioning
         /*int version =*/ marchive.VersionRead<ChFrame<double>>();
         // stream in all member data
-        marchive >> CHNVP(coord);
-        Amatrix.Set_A_quaternion(coord.rot);
+        if (marchive.in(CHNVP(coord)))
+            Amatrix.Set_A_quaternion(coord.rot);
+
+        // INITIALIZATION-BY-METHODS
+        if (marchive.CanTolerateMissingTokens()){
+            bool temp_tolerate_missing_tokens = marchive.GetTolerateMissingTokens();
+            marchive.TryTolerateMissingTokens(true);
+
+            ChVector<> _c_SetPos;
+            if (marchive.in(CHNVP(_c_SetPos)))
+                this->SetPos(_c_SetPos);
+
+            ChQuaternion<> _c_SetRot;
+            if (marchive.in(CHNVP(_c_SetRot)))
+                this->SetRot(_c_SetRot);
+
+            marchive.TryTolerateMissingTokens(temp_tolerate_missing_tokens);
+        }
+
     }
 
   public:

@@ -63,10 +63,8 @@ void AddBody(ChSystemMulticoreNSC* sys) {
     bin->SetCollide(true);
     bin->SetBodyFixed(true);
 
-    ChVector<> hdim(.1, .1, .1);
-
     bin->GetCollisionModel()->ClearModel();
-    utils::AddBoxGeometry(bin.get(), mat, ChVector<>(hdim.x(), hdim.y(), hdim.z()), ChVector<>(0, 0, 0));
+    utils::AddBoxGeometry(bin.get(), mat, ChVector<>(0.2, 0.2, 0.2), ChVector<>(0, 0, 0));
     bin->GetCollisionModel()->SetFamily(1);
     bin->GetCollisionModel()->SetFamilyMaskNoCollisionWithFamily(2);
     bin->GetCollisionModel()->BuildModel();
@@ -207,7 +205,7 @@ int main(int argc, char* argv[]) {
     vis.SetWindowSize(1280, 720);
     vis.SetRenderMode(opengl::WIREFRAME);
     vis.Initialize();
-    vis.SetCameraPosition(ChVector<>(0, -.4, 0), ChVector<>(0, 0, 0));
+    vis.AddCamera(ChVector<>(0, -.4, 0), ChVector<>(0, 0, 0));
     vis.SetCameraVertical(CameraVerticalDir::Z);
 
     // Uncomment the following two lines for the OpenGL manager to automatically

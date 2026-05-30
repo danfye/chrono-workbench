@@ -274,20 +274,6 @@ if (NOT USE_EIGEN_OPENMP)
   set(CH_C_FLAGS "${CH_C_FLAGS} -DEIGEN_DONT_PARALLELIZE")
 endif()
 
-# Fix for hang-up in compilation with 32 bit on MSVC in Release configuration with EIGEN3.
-# Note: this flag may DECREASE the overall calculation performance in approx. 10%
-# For more information, see: https://gitlab.com/libeigen/eigen/-/issues/2379
-option(CMAKE_FLAGS_EIGEN3_INLINE "Build with 32 bit on MSVC in release configuration" OFF)
-mark_as_advanced(FORCE CMAKE_FLAGS_EIGEN3_INLINE)
-if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-	if(MSVC AND ("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "Win32") AND CMAKE_FLAGS_EIGEN3_INLINE)
-     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /DEIGEN_STRONG_INLINE=inline")
-     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /DEIGEN_STRONG_INLINE=inline")
-	 message(STATUS "Enabling inline flag for EIGEN hang-up issues with 32 bit on MSVC in release configuration")
-	 message(STATUS " Compiler flag: -DEIGEN_STRONG_INLINE=inline")
-	 message(STATUS " Note: this flag may DECREASE the overall calculation performance in approx. 10%")
-	endif()
-endif()
 #-----------------------------------------------------------------------------
 # MPI support
 #-----------------------------------------------------------------------------
@@ -653,10 +639,12 @@ include_directories(${CH_INCLUDES})
 
 # Add directories to build various optional modules.  Each module is supposed
 # to provide an option for enabling that particular module.
+add_subdirectory(chrono_parsers)
 add_subdirectory(chrono_pardisomkl)
 add_subdirectory(chrono_mumps)
 add_subdirectory(chrono_matlab)
 add_subdirectory(chrono_irrlicht)
+add_subdirectory(chrono_vsg)
 add_subdirectory(chrono_cascade)
 add_subdirectory(chrono_modal)
 add_subdirectory(chrono_postprocess)
@@ -664,13 +652,13 @@ add_subdirectory(chrono_pardisoproject)
 add_subdirectory(chrono_cosimulation)
 add_subdirectory(chrono_multicore)
 add_subdirectory(chrono_opengl)
+add_subdirectory(chrono_fsi)
 add_subdirectory(chrono_gpu)
 add_subdirectory(chrono_distributed)
 add_subdirectory(chrono_vehicle)
-add_subdirectory(chrono_fsi)
+add_subdirectory(chrono_models)
 add_subdirectory(chrono_sensor)
 add_subdirectory(chrono_synchrono)
-add_subdirectory(chrono_pyparser)
 add_subdirectory(chrono_swig/chrono_python)
 add_subdirectory(chrono_swig/chrono_csharp)
 
@@ -769,12 +757,6 @@ else()
   set(CHRONO_CASCADE "#undef CHRONO_CASCADE")
 endif()
 
-if(ENABLE_MODULE_MODAL)
-  set(CHRONO_MODAL "#define CHRONO_MODAL")
-else()
-  set(CHRONO_MODAL "#undef CHRONO_MODAL")
-endif()
-
 if(ENABLE_MODULE_COSIMULATION)
   set(CHRONO_COSIMULATION "#define CHRONO_COSIMULATION")
 else()
@@ -793,16 +775,16 @@ else()
   set(CHRONO_IRRLICHT "#undef CHRONO_IRRLICHT")
 endif()
 
-if(ENABLE_MODULE_MATLAB)
-  set(CHRONO_MATLAB "#define CHRONO_MATLAB")
+if(ENABLE_MODULE_VSG)
+  set(CHRONO_VSG "#define CHRONO_VSG")
 else()
-  set(CHRONO_MATLAB "#undef CHRONO_MATLAB")
+  set(CHRONO_VSG "#undef CHRONO_VSG")
 endif()
 
-if(ENABLE_MODULE_PARDISO_MKL)
-  set(CHRONO_PARDISO_MKL "#define CHRONO_PARDISO_MKL")
+if(ENABLE_MODULE_MODAL)
+  set(CHRONO_MODAL "#define CHRONO_MODAL")
 else()
-  set(CHRONO_PARDISO_MKL "#undef CHRONO_PARDISO_MKL")
+  set(CHRONO_MODAL "#undef CHRONO_MODAL")
 endif()
 
 if(ENABLE_MODULE_MUMPS)
@@ -821,6 +803,24 @@ if(ENABLE_MODULE_OPENGL)
   set(CHRONO_OPENGL "#define CHRONO_OPENGL")
 else()
   set(CHRONO_OPENGL "#undef CHRONO_OPENGL")
+endif()
+
+if(ENABLE_MODULE_MATLAB)
+  set(CHRONO_MATLAB "#define CHRONO_MATLAB")
+else()
+  set(CHRONO_MATLAB "#undef CHRONO_MATLAB")
+endif()
+
+if(ENABLE_MODULE_PARDISO_MKL)
+  set(CHRONO_PARDISO_MKL "#define CHRONO_PARDISO_MKL")
+else()
+  set(CHRONO_PARDISO_MKL "#undef CHRONO_PARDISO_MKL")
+endif()
+
+if(ENABLE_MODULE_PARSERS)
+  set(CHRONO_PARSERS "#define CHRONO_PARSERS")
+else()
+  set(CHRONO_PARSERS "#undef CHRONO_PARSERS")
 endif()
 
 if(ENABLE_MODULE_POSTPROCESS)
@@ -945,8 +945,8 @@ set(CH_INCLUDE_DIRS ${CH_INCLUDE_DIRS} "${THRUST_INCLUDE_DIR}")
 set(CH_BINARY_DIR "${PROJECT_BINARY_DIR}")
 set(CH_DATA_DIR "${PROJECT_SOURCE_DIR}/data/")
 
-configure_file("${PROJECT_SOURCE_DIR}/cmake/ChronoConfig.cmake.in"
-               "${PROJECT_BINARY_DIR}/cmake/ChronoConfig.cmake"
+configure_file("${PROJECT_SOURCE_DIR}/cmake/chrono-config.cmake.in"
+               "${PROJECT_BINARY_DIR}/cmake/chrono-config.cmake"
                @ONLY)
 
 # For the INSTALL tree
@@ -964,8 +964,8 @@ set(CH_INCLUDE_DIRS ${CH_INCLUDE_DIRS} "${THRUST_INCLUDE_DIR}")
 set(CH_BINARY_DIR ${CMAKE_INSTALL_PREFIX})
 set(CH_DATA_DIR "${CMAKE_INSTALL_PREFIX}/${CH_INSTALL_DATA}/")
 
-configure_file("${PROJECT_SOURCE_DIR}/cmake/ChronoConfig.cmake.in"
-               "${PROJECT_BINARY_DIR}/cmake/ChronoConfig.cmake.install"
+configure_file("${PROJECT_SOURCE_DIR}/cmake/chrono-config.cmake.in"
+               "${PROJECT_BINARY_DIR}/cmake/chrono-config.cmake.install"
                @ONLY)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
@@ -974,6 +974,6 @@ else()
     set(CH_CONFIG_INSTALL_PATH "lib/cmake/Chrono")
 endif()
 
-install(FILES "${PROJECT_BINARY_DIR}/cmake/ChronoConfig.cmake.install"
+install(FILES "${PROJECT_BINARY_DIR}/cmake/chrono-config.cmake.install"
         DESTINATION ${CH_CONFIG_INSTALL_PATH}
-        RENAME ChronoConfig.cmake)
+        RENAME chrono-config.cmake)

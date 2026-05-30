@@ -22,24 +22,30 @@ ChConeShape::ChConeShape() {
     SetMutable(false);
 }
 
+ChConeShape::ChConeShape(double radius, double height) {
+    gcone.r = radius;
+    gcone.h = height;
+    SetMutable(false);
+}
+
 ChConeShape::ChConeShape(const geometry::ChCone& cone) : gcone(cone) {
     SetMutable(false);
 }
 
-void ChConeShape::ArchiveOUT(ChArchiveOut& marchive) {
+void ChConeShape::ArchiveOut(ChArchiveOut& marchive) {
     // version number
     marchive.VersionWrite<ChConeShape>();
     // serialize parent class
-    ChVisualShape::ArchiveOUT(marchive);
+    ChVisualShape::ArchiveOut(marchive);
     // serialize all member data:
     marchive << CHNVP(gcone);
 }
 
-void ChConeShape::ArchiveIN(ChArchiveIn& marchive) {
+void ChConeShape::ArchiveIn(ChArchiveIn& marchive) {
     // version number
-    /*int version =*/ marchive.VersionRead<ChConeShape>();
+    /*int version =*/marchive.VersionRead<ChConeShape>();
     // deserialize parent class
-    ChVisualShape::ArchiveIN(marchive);
+    ChVisualShape::ArchiveIn(marchive);
     // stream in all member data:
     marchive >> CHNVP(gcone);
 }

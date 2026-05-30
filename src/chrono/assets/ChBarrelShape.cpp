@@ -23,36 +23,37 @@ CH_FACTORY_REGISTER(ChBarrelShape)
 ChBarrelShape::ChBarrelShape() {
     SetMutable(false);
 }
-ChBarrelShape::ChBarrelShape(double mHlow, double mHsup, double mRvert, double mRhor, double mRoffset)
-    : Hlow(mHlow), Hsup(mHsup), Rvert(mRvert), Rhor(mRhor), Roffset(mRoffset) {
+
+ChBarrelShape::ChBarrelShape(double Y_low, double Y_high, double axis_vert, double axis_hor, double R_offset)
+    : Hlow(Y_low), Hsup(Y_high), Rvert(axis_vert / 2), Rhor(axis_hor / 2), Roffset(R_offset) {
     SetMutable(false);
 }
 
-void ChBarrelShape::ArchiveOUT(ChArchiveOut& marchive) {
+void ChBarrelShape::ArchiveOut(ChArchiveOut& marchive) {
     // version number
     marchive.VersionWrite<ChBarrelShape>();
     // serialize parent class
-    ChVisualShape::ArchiveOUT(marchive);
+    ChVisualShape::ArchiveOut(marchive);
     // serialize all member data:
     marchive << CHNVP(Hlow);
-	marchive << CHNVP(Hsup);
-	marchive << CHNVP(Rvert);
-	marchive << CHNVP(Rhor);
-	marchive << CHNVP(Roffset);
+    marchive << CHNVP(Hsup);
+    marchive << CHNVP(Rvert);
+    marchive << CHNVP(Rhor);
+    marchive << CHNVP(Roffset);
 }
 
 /// Method to allow de serialization of transient data from archives.
-void ChBarrelShape::ArchiveIN(ChArchiveIn& marchive) {
+void ChBarrelShape::ArchiveIn(ChArchiveIn& marchive) {
     // version number
-    /*int version =*/ marchive.VersionRead<ChBarrelShape>();
+    /*int version =*/marchive.VersionRead<ChBarrelShape>();
     // deserialize parent class
-    ChVisualShape::ArchiveIN(marchive);
+    ChVisualShape::ArchiveIn(marchive);
     // stream in all member data:
     marchive >> CHNVP(Hlow);
-	marchive >> CHNVP(Hsup);
-	marchive >> CHNVP(Rvert);
-	marchive >> CHNVP(Rhor);
-	marchive >> CHNVP(Roffset);
+    marchive >> CHNVP(Hsup);
+    marchive >> CHNVP(Rvert);
+    marchive >> CHNVP(Rhor);
+    marchive >> CHNVP(Roffset);
 }
 
 }  // end namespace chrono

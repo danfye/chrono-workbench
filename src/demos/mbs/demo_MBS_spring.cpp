@@ -30,14 +30,21 @@
 #include "chrono/physics/ChBody.h"
 #include "chrono/core/ChRealtimeStep.h"
 
-#include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
+#include "chrono/assets/ChVisualSystem.h"
+#ifdef CHRONO_IRRLICHT
+    #include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
+using namespace chrono::irrlicht;
+#endif
+#ifdef CHRONO_VSG
+    #include "chrono_vsg/ChVisualSystemVSG.h"
+using namespace chrono::vsg3d;
+#endif
 
 using namespace chrono;
-using namespace chrono::irrlicht;
-
-using namespace irr;
 
 // =============================================================================
+
+ChVisualSystem::Type vis_type = ChVisualSystem::Type::VSG;
 
 double rest_length = 1.5;
 double spring_coef = 50;
@@ -77,12 +84,10 @@ int main(int argc, char* argv[]) {
     ground->SetCollide(false);
 
     {
-        auto sph_1 = chrono_types::make_shared<ChSphereShape>();
-        sph_1->GetSphereGeometry().rad = 0.1;
+        auto sph_1 = chrono_types::make_shared<ChSphereShape>(0.1);
         ground->AddVisualShape(sph_1, ChFrame<>(ChVector<>(-1, 0, 0), QUNIT));
 
-        auto sph_2 = chrono_types::make_shared<ChSphereShape>();
-        sph_2->GetSphereGeometry().rad = 0.1;
+        auto sph_2 = chrono_types::make_shared<ChSphereShape>(0.1);
         ground->AddVisualShape(sph_2, ChFrame<>(ChVector<>(+1, 0, 0), QUNIT));
     }
 
@@ -99,8 +104,7 @@ int main(int argc, char* argv[]) {
     body_1->SetInertiaXX(ChVector<>(1, 1, 1));
 
     // Attach a visualization asset.
-    auto box_1 = chrono_types::make_shared<ChBoxShape>();
-    box_1->GetBoxGeometry().SetLengths(ChVector<>(1, 1, 1));
+    auto box_1 = chrono_types::make_shared<ChBoxShape>(1, 1, 1);
     box_1->SetColor(ChColor(0.6f, 0, 0));
     body_1->AddVisualShape(box_1);
 
@@ -114,7 +118,7 @@ int main(int argc, char* argv[]) {
     sys.AddLink(spring_1);
 
     // Attach a visualization asset.
-    spring_1->AddVisualShape(chrono_types::make_shared<ChSpringShape>(0.05, 80, 15));
+    spring_1->AddVisualShape(chrono_types::make_shared<ChSpringShape>(0.1, 80, 15));
 
     // Create a body suspended through a ChLinkTSDA (custom force functor)
     // -------------------------------------------------------------------
@@ -129,8 +133,7 @@ int main(int argc, char* argv[]) {
     body_2->SetInertiaXX(ChVector<>(1, 1, 1));
 
     // Attach a visualization asset.
-    auto box_2 = chrono_types::make_shared<ChBoxShape>();
-    box_2->GetBoxGeometry().SetLengths(ChVector<>(1, 1, 1));
+    auto box_2 = chrono_types::make_shared<ChBoxShape>(1, 1, 1);
     box_2->SetColor(ChColor(0, 0, 0.6f));
     body_2->AddVisualShape(box_2);
 
@@ -145,21 +148,59 @@ int main(int argc, char* argv[]) {
     sys.AddLink(spring_2);
 
     // Attach a visualization asset.
-    spring_2->AddVisualShape(chrono_types::make_shared<ChSpringShape>(0.05, 80, 15));
+    spring_2->AddVisualShape(chrono_types::make_shared<ChSpringShape>(0.1, 80, 15));
 
-    // Create the Irrlicht application
-    // -------------------------------
+    // Create the run-time visualization system
+    // ----------------------------------------
 
-    // Create the Irrlicht visualization sys
-    auto vis = chrono_types::make_shared<ChVisualSystemIrrlicht>();
-    vis->AttachSystem(&sys);
-    vis->SetWindowSize(800, 600);
-    vis->SetWindowTitle("ChLinkTSDA demo");
-    vis->Initialize();
-    vis->AddLogo();
-    vis->AddSkyBox();
-    vis->AddCamera(ChVector<>(0, 0, 6));
-    vis->AddTypicalLights();
+#ifndef CHRONO_IRRLICHT
+    if (vis_type == ChVisualSystem::Type::IRRLICHT)
+        vis_type = ChVisualSystem::Type::VSG;
+#endif
+#ifndef CHRONO_VSG
+    if (vis_type == ChVisualSystem::Type::VSG)
+        vis_type = ChVisualSystem::Type::IRRLICHT;
+#endif
+
+    std::shared_ptr<ChVisualSystem> vis;
+    switch (vis_type) {
+        case ChVisualSystem::Type::IRRLICHT: {
+#ifdef CHRONO_IRRLICHT
+            auto vis_irr = chrono_types::make_shared<ChVisualSystemIrrlicht>();
+            vis_irr->AttachSystem(&sys);
+            vis_irr->SetWindowSize(800, 600);
+            vis_irr->SetWindowTitle("ChLinkTSDA demo");
+            vis_irr->Initialize();
+            vis_irr->AddLogo();
+            vis_irr->AddSkyBox();
+            vis_irr->AddCamera(ChVector<>(0, 0, 6));
+            vis_irr->AddTypicalLights();
+
+            vis = vis_irr;
+#endif
+            break;
+        }
+        default:
+        case ChVisualSystem::Type::VSG: {
+#ifdef CHRONO_VSG
+            auto vis_vsg = chrono_types::make_shared<ChVisualSystemVSG>();
+            vis_vsg->AttachSystem(&sys);
+            vis_vsg->SetCameraVertical(CameraVerticalDir::Y);
+            vis_vsg->SetWindowSize(ChVector2<int>(800, 600));
+            vis_vsg->SetWindowPosition(ChVector2<int>(100, 300));
+            vis_vsg->SetWindowTitle("Chrono VSG Springs");
+            vis_vsg->SetUseSkyBox(true);
+            vis_vsg->AddCamera(ChVector<>(0, 0, 12));
+            vis_vsg->SetCameraAngleDeg(40);
+            vis_vsg->SetLightIntensity(1.0f);
+            vis_vsg->SetLightDirection(1.5 * CH_C_PI_2, CH_C_PI_4);
+            vis_vsg->Initialize();
+
+            vis = vis_vsg;
+#endif
+            break;
+        }
+    }
 
     // Simulation loop
     int frame = 0;

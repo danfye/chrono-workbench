@@ -111,33 +111,59 @@ void ChPhysicsItem::Update(double mytime, bool update_assets) {
     }
 }
 
-void ChPhysicsItem::ArchiveOUT(ChArchiveOut& marchive) {
+void ChPhysicsItem::ArchiveOut(ChArchiveOut& marchive) {
     // version number
     marchive.VersionWrite<ChPhysicsItem>();
 
     // serialize parent class
-    ChObj::ArchiveOUT(marchive);
+    ChObj::ArchiveOut(marchive);
 
     // serialize all member data:
     // marchive << CHNVP(system); ***TODO***
+    marchive << CHNVP(GetVisualModel(), "visual_model");
+    marchive << CHNVP(cameras);
     // marchive << CHNVP(offset_x);
     // marchive << CHNVP(offset_w);
     // marchive << CHNVP(offset_L);
 }
 
 /// Method to allow de serialization of transient data from archives.
-void ChPhysicsItem::ArchiveIN(ChArchiveIn& marchive) {
+void ChPhysicsItem::ArchiveIn(ChArchiveIn& marchive) {
     // version number
     /*int version =*/marchive.VersionRead<ChPhysicsItem>();
 
     // deserialize parent class
-    ChObj::ArchiveIN(marchive);
+    ChObj::ArchiveIn(marchive);
 
     // stream in all member data:
     // marchive >> CHNVP(system); ***TODO***
+    std::shared_ptr<ChVisualModel> visual_model;
+    marchive >> CHNVP(visual_model);
+    if (visual_model)
+        AddVisualModel(visual_model);
+    marchive >> CHNVP(cameras);
     // marchive >> CHNVP(offset_x);
     // marchive >> CHNVP(offset_w);
     // marchive >> CHNVP(offset_L);
+
+    // INITIALIZATION-BY-METHODS
+    if (marchive.CanTolerateMissingTokens()){
+        bool temp_tolerate_missing_tokens = marchive.GetTolerateMissingTokens();
+        marchive.TryTolerateMissingTokens(true);
+
+        std::vector<std::shared_ptr<ChVisualShape>> _c_AddVisualShape_ChVisualShapes;
+        std::vector<ChFrame<>> _c_AddVisualShape_ChFrames;
+        if (marchive.in(CHNVP(_c_AddVisualShape_ChVisualShapes)) && marchive.in(CHNVP(_c_AddVisualShape_ChFrames))){
+            if (_c_AddVisualShape_ChVisualShapes.size() != _c_AddVisualShape_ChFrames.size())
+                throw ChExceptionArchive("ChVisualShape and ChFrame vector must be of the same length and they are not.");
+
+            for (auto s_sel = 0; s_sel<_c_AddVisualShape_ChVisualShapes.size(); ++s_sel)
+                this->AddVisualShape(_c_AddVisualShape_ChVisualShapes.at(s_sel), _c_AddVisualShape_ChFrames.at(s_sel));
+        }
+
+
+        marchive.TryTolerateMissingTokens(temp_tolerate_missing_tokens);
+    }
 }
 
 }  // end namespace chrono

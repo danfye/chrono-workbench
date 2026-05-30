@@ -39,7 +39,8 @@ my_hmmwv = veh.HMMWV_Full()
 my_hmmwv.SetContactMethod(chrono.ChContactMethod_SMC)
 my_hmmwv.SetChassisFixed(False)
 my_hmmwv.SetInitPosition(chrono.ChCoordsysD(chrono.ChVectorD(-75, 0, 0.5),chrono.QUNIT))
-my_hmmwv.SetPowertrainType(veh.PowertrainModelType_SHAFTS)
+my_hmmwv.SetEngineType(veh.EngineModelType_SHAFTS)
+my_hmmwv.SetTransmissionType(veh.TransmissionModelType_SHAFTS)
 my_hmmwv.SetDriveType(veh.DrivelineTypeWV_RWD)
 my_hmmwv.SetSteeringType(veh.SteeringTypeWV_PITMAN_ARM)
 my_hmmwv.SetTireType(veh.TireModelType_TMEASY)
@@ -128,7 +129,7 @@ while vis.Run() :
     # Update modules (process inputs from other modules)
     terrain.Synchronize(time)
     my_hmmwv.Synchronize(time, driver_inputs, terrain)
-    vis.Synchronize("", driver_inputs)
+    vis.Synchronize(time, driver_inputs)
     
     # Advance simulation for one timestep for all modules
     steeringPID_output = steeringPID.Advance(my_hmmwv.GetVehicle(), step_size)

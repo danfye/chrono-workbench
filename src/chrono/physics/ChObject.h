@@ -86,40 +86,16 @@ class ChApi ChObj {
     int MFlagGet(int& mflag, int mask) { return (mflag & mask); }
 
     /// Method to allow serialization of transient data to archives.
-    virtual void ArchiveOUT(ChArchiveOut& marchive);
+    virtual void ArchiveOut(ChArchiveOut& marchive);
 
     /// Method to allow de-serialization of transient data from archives.
-    virtual void ArchiveIN(ChArchiveIn& marchive);
+    virtual void ArchiveIn(ChArchiveIn& marchive);
 
     // Method to allow mnemonic names in (de)serialization of containers (std::vector, arrays, etc.)
     virtual std::string& ArchiveContainerName() { return m_name; }
 };
 
 CH_CLASS_VERSION(ChObj, 0)
-
-// Functions to manipulate STL containers of ChObj objects
-
-template <class T, class Iterator>
-T ChContainerSearchFromName(const char* m_name, Iterator from, Iterator to) {
-    Iterator iter = from;
-    while (iter != to) {
-        if (!strcmp(m_name, (*iter)->GetName()))
-            return (*iter);
-        iter++;
-    }
-    return T(0);
-}
-
-template <class T, class Iterator>
-T ChContainerSearchFromID(int myID, Iterator from, Iterator to) {
-    Iterator iter = from;
-    while (iter != to) {
-        if (myID == (*iter)->GetIdentifier())
-            return (*iter);
-        iter++;
-    }
-    return T(0);
-}
 
 /// @} chrono_physics
 

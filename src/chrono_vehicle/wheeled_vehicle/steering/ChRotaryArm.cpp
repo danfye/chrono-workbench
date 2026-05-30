@@ -42,6 +42,8 @@ ChRotaryArm::~ChRotaryArm() {
 void ChRotaryArm::Initialize(std::shared_ptr<ChChassis> chassis,
                              const ChVector<>& location,
                              const ChQuaternion<>& rotation) {
+    ChSteering::Initialize(chassis, location, rotation);
+
     m_parent = chassis;
     m_rel_xform = ChFrame<>(location, rotation);
 
@@ -137,13 +139,7 @@ void ChRotaryArm::AddVisualizationAssets(VisualizationType vis) {
         return;
 
     // Visualization for arm
-    {
-        auto cyl = chrono_types::make_shared<ChCylinderShape>();
-        cyl->GetCylinderGeometry().p1 = m_pC;
-        cyl->GetCylinderGeometry().p2 = m_pL;
-        cyl->GetCylinderGeometry().rad = getPitmanArmRadius();
-        m_link->AddVisualShape(cyl);
-    }
+    ChVehicleGeometry::AddVisualizationCylinder(m_link, m_pC, m_pL, getPitmanArmRadius());
 }
 
 void ChRotaryArm::RemoveVisualizationAssets() {
@@ -170,11 +166,11 @@ void ChRotaryArm::ExportComponentList(rapidjson::Document& jsonDocument) const {
 
     std::vector<std::shared_ptr<ChBody>> bodies;
     bodies.push_back(m_link);
-    ChPart::ExportBodyList(jsonDocument, bodies);
+    ExportBodyList(jsonDocument, bodies);
 
     std::vector<std::shared_ptr<ChLink>> joints;
     joints.push_back(m_revolute);
-    ChPart::ExportJointList(jsonDocument, joints);
+    ExportJointList(jsonDocument, joints);
 }
 
 void ChRotaryArm::Output(ChVehicleOutput& database) const {

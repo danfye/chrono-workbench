@@ -16,6 +16,8 @@
 
 namespace chrono {
 
+CH_FACTORY_REGISTER(ChVisualMaterial)
+
 ChVisualMaterial::ChVisualMaterial()
     : Ka({0.2f, 0.2f, 0.2f}),
       Kd({1.0f, 1.0f, 1.0f}),
@@ -27,36 +29,59 @@ ChVisualMaterial::ChVisualMaterial()
       fresnel_max(1),
       fresnel_min(0.f),
       illum(0),
-      roughness(1),
+      roughness(0),
       metallic(0),
       use_specular_workflow(true),
       class_id(0),
       instance_id(0)
       {}
 
-void ChVisualMaterial::SetKdTexture(const std::string& filename, float scale_x, float scale_y) {
+void ChVisualMaterial::SetKdTexture(const std::string& filename) {
     kd_texture.SetFilename(filename);
-    kd_texture.SetScale(scale_x, scale_y);
 }
-void ChVisualMaterial::SetKsTexture(const std::string& filename, float scale_x, float scale_y) {
+void ChVisualMaterial::SetKsTexture(const std::string& filename) {
     ks_texture.SetFilename(filename);
-    ks_texture.SetScale(scale_x, scale_y);
 }
-void ChVisualMaterial::SetNormalMapTexture(const std::string& filename, float scale_x, float scale_y) {
+void ChVisualMaterial::SetKeTexture(const std::string& filename) {
+    ke_texture.SetFilename(filename);
+}
+void ChVisualMaterial::SetNormalMapTexture(const std::string& filename) {
     normal_texture.SetFilename(filename);
-    normal_texture.SetScale(scale_x, scale_y);
 }
-void ChVisualMaterial::SetMetallicTexture(const std::string& filename, float scale_x, float scale_y) {
+void ChVisualMaterial::SetMetallicTexture(const std::string& filename) {
     metallic_texture.SetFilename(filename);
-    metallic_texture.SetScale(scale_x, scale_y);
 }
-void ChVisualMaterial::SetRoughnessTexture(const std::string& filename, float scale_x, float scale_y) {
+void ChVisualMaterial::SetRoughnessTexture(const std::string& filename) {
     roughness_texture.SetFilename(filename);
-    roughness_texture.SetScale(scale_x, scale_y);
 }
-void ChVisualMaterial::SetOpacityTexture(const std::string& filename, float scale_x, float scale_y) {
+void ChVisualMaterial::SetOpacityTexture(const std::string& filename) {
     opacity_texture.SetFilename(filename);
+}
+void ChVisualMaterial::SetWeightTexture(const std::string& filename) {
+    weight_texture.SetFilename(filename);
+}
+void ChVisualMaterial::SetDisplacementTexture(const std::string &filename) {
+    disp_texture.SetFilename(filename);
+}
+void ChVisualMaterial::SetAmbientOcclusionTexture(const std::string &filename) {
+    ao_texture.SetFilename(filename);
+}
+
+void ChVisualMaterial::SetTextureScale(float scale_x, float scale_y) {
+    kd_texture.SetScale(scale_x, scale_y);
+    ks_texture.SetScale(scale_x, scale_y);
+    ke_texture.SetScale(scale_x, scale_y);
+    normal_texture.SetScale(scale_x, scale_y);
+    metallic_texture.SetScale(scale_x, scale_y);
+    roughness_texture.SetScale(scale_x, scale_y);
     opacity_texture.SetScale(scale_x, scale_y);
+    weight_texture.SetScale(scale_x, scale_y);
+    disp_texture.SetScale(scale_x, scale_y);
+    ao_texture.SetScale(scale_x, scale_y);
+}
+
+const ChVector2<float>& ChVisualMaterial::GetTextureScale() const {
+    return kd_texture.GetScale();
 }
 
 void ChVisualMaterial::SetAmbientColor(const ChColor& rgb) {
@@ -121,6 +146,63 @@ void ChVisualMaterial::SetRoughness(float r) {
 
 void ChVisualMaterial::SetMetallic(float m) {
     metallic = std::max(0.001f, std::min(m, 1.f));
+}
+
+void ChVisualMaterial::ArchiveOut(ChArchiveOut& marchive) {
+    marchive.VersionWrite<ChVisualMaterial>();
+
+    marchive << CHNVP(Ka);
+    marchive << CHNVP(Kd);
+    marchive << CHNVP(Ks);
+    marchive << CHNVP(Ke);
+    marchive << CHNVP(fresnel_max);
+    marchive << CHNVP(fresnel_min);
+    marchive << CHNVP(fresnel_exp);
+    marchive << CHNVP(Ns);
+    marchive << CHNVP(d);
+    marchive << CHNVP(illum);
+    marchive << CHNVP(roughness);
+    marchive << CHNVP(metallic);
+    marchive << CHNVP(use_specular_workflow);
+    marchive << CHNVP(kd_texture);
+    marchive << CHNVP(ks_texture);
+    marchive << CHNVP(ke_texture);
+    marchive << CHNVP(normal_texture);
+    marchive << CHNVP(metallic_texture);
+    marchive << CHNVP(roughness_texture);
+    marchive << CHNVP(opacity_texture);
+    marchive << CHNVP(weight_texture);
+    marchive << CHNVP(disp_texture);
+    marchive << CHNVP(ao_texture);
+
+}
+
+void ChVisualMaterial::ArchiveIn(ChArchiveIn& marchive) {
+    /*int version =*/marchive.VersionRead<ChVisualMaterial>();
+
+    marchive >> CHNVP(Ka);
+    marchive >> CHNVP(Kd);
+    marchive >> CHNVP(Ks);
+    marchive >> CHNVP(Ke);
+    marchive >> CHNVP(fresnel_max);
+    marchive >> CHNVP(fresnel_min);
+    marchive >> CHNVP(fresnel_exp);
+    marchive >> CHNVP(Ns);
+    marchive >> CHNVP(d);
+    marchive >> CHNVP(illum);
+    marchive >> CHNVP(roughness);
+    marchive >> CHNVP(metallic);
+    marchive >> CHNVP(use_specular_workflow);
+    marchive >> CHNVP(kd_texture);
+    marchive >> CHNVP(ks_texture);
+    marchive >> CHNVP(ke_texture);
+    marchive >> CHNVP(normal_texture);
+    marchive >> CHNVP(metallic_texture);
+    marchive >> CHNVP(roughness_texture);
+    marchive >> CHNVP(opacity_texture);
+    marchive >> CHNVP(weight_texture);
+    marchive >> CHNVP(disp_texture);
+    marchive >> CHNVP(ao_texture);
 }
 
 // -----------------------------------------------------------------------------

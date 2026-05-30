@@ -34,9 +34,12 @@
 
 #include "chrono_models/ChApiModels.h"
 #include "chrono_models/vehicle/man/MAN_7t_Vehicle.h"
-#include "chrono_models/vehicle/man/MAN_7t_SimpleMapPowertrain.h"
-#include "chrono_models/vehicle/man/MAN_7t_SimpleCVTPowertrain.h"
+#include "chrono_models/vehicle/man/powertrain/MAN_7t_EngineSimpleMap.h"
+#include "chrono_models/vehicle/man/powertrain/MAN_7t_AutomaticTransmissionSimpleMap.h"
+#include "chrono_models/vehicle/man/powertrain/MAN_7t_EngineSimple.h"
+#include "chrono_models/vehicle/man/powertrain/MAN_7t_AutomaticTransmissionSimple.h"
 #include "chrono_models/vehicle/man/MAN_5t_TMeasyTire.h"
+#include "chrono_models/vehicle/man/MAN_5t_TMsimpleTire.h"
 
 namespace chrono {
 namespace vehicle {
@@ -60,7 +63,8 @@ class CH_MODELS_API MAN_7t {
     void SetChassisCollisionType(CollisionType val) { m_chassisCollisionType = val; }
 
     void SetDriveline6WD(bool val) { m_use_6WD_drivetrain = val; }
-    void SetPowertrainType(PowertrainModelType val) { m_powertrainType = val; }
+    void SetEngineType(EngineModelType val) { m_engineType = val; }
+    void SetTransmissionType(TransmissionModelType val) { m_transmissionType = val; }
     void SetBrakeType(BrakeType brake_type) { m_brake_type = brake_type; }
     void SetTireType(TireModelType val) { m_tireType = val; }
 
@@ -76,7 +80,6 @@ class CH_MODELS_API MAN_7t {
     ChWheeledVehicle& GetVehicle() const { return *m_vehicle; }
     std::shared_ptr<ChChassis> GetChassis() const { return m_vehicle->GetChassis(); }
     std::shared_ptr<ChBodyAuxRef> GetChassisBody() const { return m_vehicle->GetChassisBody(); }
-    std::shared_ptr<ChPowertrain> GetPowertrain() const { return m_vehicle->GetPowertrain(); }
 
     void Initialize();
 
@@ -100,7 +103,8 @@ class CH_MODELS_API MAN_7t {
     bool m_fixed;
     bool m_brake_locking;
 
-    PowertrainModelType m_powertrainType;
+    EngineModelType m_engineType;
+    TransmissionModelType m_transmissionType;
     BrakeType m_brake_type;
     TireModelType m_tireType;
     bool m_use_6WD_drivetrain;

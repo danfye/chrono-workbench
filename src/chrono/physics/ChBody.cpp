@@ -34,6 +34,11 @@ using namespace geometry;
 
 // Register into the object factory, to enable run-time dynamic creation and persistence
 CH_FACTORY_REGISTER(ChBody)
+CH_UPCASTING(ChBody, ChPhysicsItem)
+CH_UPCASTING(ChBody, ChBodyFrame)
+CH_UPCASTING_SANITIZED(ChBody, ChContactable_1vars<6>, ChBody_ChContactable_1vars_6)
+CH_UPCASTING(ChBody, ChLoadableUVW)
+
 
 ChBody::ChBody(collision::ChCollisionSystemType collision_type) {
     marklist.clear();
@@ -564,20 +569,26 @@ void ChBody::RemoveAllMarkers() {
     marklist.clear();
 }
 
-std::shared_ptr<ChMarker> ChBody::SearchMarker(const char* m_name) {
-    return ChContainerSearchFromName<std::shared_ptr<ChMarker>, std::vector<std::shared_ptr<ChMarker>>::iterator>(
-        m_name, marklist.begin(), marklist.end());
+std::shared_ptr<ChMarker> ChBody::SearchMarker(const std::string& name) const {
+    auto marker = std::find_if(std::begin(marklist), std::end(marklist),
+                               [name](std::shared_ptr<ChMarker> marker) { return marker->GetNameString() == name; });
+    return (marker != std::end(marklist)) ? *marker : nullptr;
 }
 
-std::shared_ptr<ChForce> ChBody::SearchForce(const char* m_name) {
-    return ChContainerSearchFromName<std::shared_ptr<ChForce>, std::vector<std::shared_ptr<ChForce>>::iterator>(
-        m_name, forcelist.begin(), forcelist.end());
+std::shared_ptr<ChMarker> ChBody::SearchMarker(int id) const {
+    auto marker = std::find_if(std::begin(marklist), std::end(marklist),
+                               [id](std::shared_ptr<ChMarker> marker) { return marker->GetIdentifier() == id; });
+    return (marker != std::end(marklist)) ? *marker : nullptr;
 }
 
-// These are the members used to UPDATE
-// the body coordinates during the animation
-// Also the coordinates of forces and markers
-// linked to the body will be updated.
+std::shared_ptr<ChForce> ChBody::SearchForce(const std::string& name) const {
+    auto force = std::find_if(std::begin(forcelist), std::end(forcelist),
+                              [name](std::shared_ptr<ChForce> force) { return force->GetNameString() == name; });
+    return (force != std::end(forcelist)) ? *force : nullptr;
+}
+
+// These are the members used to UPDATE the body coordinates during the animation.
+// Also the coordinates of forces and markers linked to the body will be updated.
 
 void ChBody::UpdateMarkers(double mytime) {
     for (auto& marker : marklist) {
@@ -1065,14 +1076,14 @@ void ChBody::ComputeNF(
 // ---------------------------------------------------------------------------
 // FILE I/O
 
-void ChBody::ArchiveOUT(ChArchiveOut& marchive) {
+void ChBody::ArchiveOut(ChArchiveOut& marchive) {
     // version number
     marchive.VersionWrite<ChBody>();
 
     // serialize parent class
-    ChPhysicsItem::ArchiveOUT(marchive);
+    ChPhysicsItem::ArchiveOut(marchive);
     // serialize parent class
-    ChBodyFrame::ArchiveOUT(marchive);
+    ChBodyFrame::ArchiveOut(marchive);
 
     // serialize all member data:
 
@@ -1095,7 +1106,7 @@ void ChBody::ArchiveOUT(ChArchiveOut& marchive) {
     marchive << CHNVP(forcelist, "forces");
 
     marchive << CHNVP(body_id);
-    marchive << CHNVP(collision_model);
+    //marchive << CHNVP(collision_model);
     marchive << CHNVP(gyro);
     marchive << CHNVP(Xforce);
     marchive << CHNVP(Xtorque);
@@ -1112,31 +1123,31 @@ void ChBody::ArchiveOUT(ChArchiveOut& marchive) {
 }
 
 /// Method to allow de serialization of transient data from archives.
-void ChBody::ArchiveIN(ChArchiveIn& marchive) {
+void ChBody::ArchiveIn(ChArchiveIn& marchive) {
     // version number
     /*int version =*/ marchive.VersionRead<ChBody>();
 
     // deserialize parent class
-    ChPhysicsItem::ArchiveIN(marchive);
+    ChPhysicsItem::ArchiveIn(marchive);
     // deserialize parent class
-    ChBodyFrame::ArchiveIN(marchive);
+    ChBodyFrame::ArchiveIn(marchive);
 
     // stream in all member data:
 
     marchive >> CHNVP(bflags);
     bool mflag;  // more readable flag output in case of ASCII in/out
-    marchive >> CHNVP(mflag, "is_fixed");
-    BFlagSet(BodyFlag::FIXED, mflag);
-    marchive >> CHNVP(mflag, "collide");
-    BFlagSet(BodyFlag::COLLIDE, mflag);
-    marchive >> CHNVP(mflag, "limit_speed");
-    BFlagSet(BodyFlag::LIMITSPEED, mflag);
-    marchive >> CHNVP(mflag, "no_gyro_torque");
-    BFlagSet(BodyFlag::NOGYROTORQUE, mflag);
-    marchive >> CHNVP(mflag, "use_sleeping");
-    BFlagSet(BodyFlag::USESLEEPING, mflag);
-    marchive >> CHNVP(mflag, "is_sleeping");
-    BFlagSet(BodyFlag::SLEEPING, mflag);
+    if (marchive.in(CHNVP(mflag, "is_fixed")))
+        BFlagSet(BodyFlag::FIXED, mflag);
+    if (marchive.in(CHNVP(mflag, "collide")))
+        BFlagSet(BodyFlag::COLLIDE, mflag);
+    if (marchive.in(CHNVP(mflag, "limit_speed")))
+        BFlagSet(BodyFlag::LIMITSPEED, mflag);
+    if (marchive.in(CHNVP(mflag, "no_gyro_torque")))
+        BFlagSet(BodyFlag::NOGYROTORQUE, mflag);
+    if (marchive.in(CHNVP(mflag, "use_sleeping")))
+        BFlagSet(BodyFlag::USESLEEPING, mflag);
+    if (marchive.in(CHNVP(mflag, "is_sleeping")))
+        BFlagSet(BodyFlag::SLEEPING, mflag);
 
     std::vector<std::shared_ptr<ChMarker>> tempmarkers;
     std::vector<std::shared_ptr<ChForce>> tempforces;
@@ -1153,8 +1164,8 @@ void ChBody::ArchiveIN(ChArchiveIn& marchive) {
     }
 
     marchive >> CHNVP(body_id);
-    marchive >> CHNVP(collision_model);
-    collision_model->SetContactable(this);
+    //marchive >> CHNVP(collision_model);
+    //collision_model->SetContactable(this);
     marchive >> CHNVP(gyro);
     marchive >> CHNVP(Xforce);
     marchive >> CHNVP(Xtorque);
@@ -1168,9 +1179,35 @@ void ChBody::ArchiveIN(ChArchiveIn& marchive) {
     marchive >> CHNVP(sleep_minspeed);
     marchive >> CHNVP(sleep_minwvel);
     marchive >> CHNVP(sleep_starttime);
+
+
+    // INITIALIZATION-BY-METHODS
+    if (marchive.CanTolerateMissingTokens()){
+        bool temp_tolerate_missing_tokens = marchive.GetTolerateMissingTokens();
+        marchive.TryTolerateMissingTokens(true);
+
+        bool _c_SetBodyFixed;
+        if (marchive.in(CHNVP(_c_SetBodyFixed)))
+            this->SetBodyFixed(_c_SetBodyFixed);
+
+        double _c_SetMass;
+        if (marchive.in(CHNVP(_c_SetMass)))
+            this->SetMass(_c_SetMass);
+
+        ChVector<> _c_SetInertiaXX;
+        if (marchive.in(CHNVP(_c_SetInertiaXX)))
+            this->SetInertiaXX(_c_SetInertiaXX);
+
+        ChVector<> _c_SetInertiaXY;
+        if (marchive.in(CHNVP(_c_SetInertiaXY)))
+            this->SetInertiaXY(_c_SetInertiaXY);
+
+        marchive.TryTolerateMissingTokens(temp_tolerate_missing_tokens);
+    }
+
 }
 
-void ChBody::StreamOUTstate(ChStreamOutBinary& mstream) {
+void ChBody::StreamOutstate(ChStreamOutBinary& mstream) {
     // Do not serialize parent classes and do not
     // implement versioning, because this must be efficient
     // and will be used just for domain decomposition.
@@ -1190,7 +1227,7 @@ void ChBody::StreamOUTstate(ChStreamOutBinary& mstream) {
     mstream << this->coord_dt.rot.e3();
 }
 
-void ChBody::StreamINstate(ChStreamInBinary& mstream) {
+void ChBody::StreamInstate(ChStreamInBinary& mstream) {
     // Do not serialize parent classes and do not
     // implement versioning, because this must be efficient
     // and will be used just for domain decomposition.

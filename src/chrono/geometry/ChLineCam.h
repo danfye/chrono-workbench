@@ -73,9 +73,8 @@ class ChApi ChLineCam : public ChLine {
     /// "Virtual" copy constructor (covariant return type).
     virtual ChLineCam* Clone() const override { return new ChLineCam(*this); }
 
-    /// Get the class type as unique numerical ID.
-    /// Each inherited class must return an unique ID.
-    virtual GeometryType GetClassType() const override { return LINE_CAM; }
+    /// Get the class type as an enum.
+    virtual Type GetClassType() const override { return Type::LINE_CAM; }
 
     virtual bool Get_closed() const override { return true; }
     virtual void Set_closed(bool mc) override {}
@@ -144,10 +143,10 @@ class ChApi ChLineCam : public ChLine {
     double Get_weight(double par) const { return law->Get_weight(par * 2 * CH_C_PI); }
 
     /// Method to allow serialization of transient data to archives.
-    virtual void ArchiveOUT(ChArchiveOut& marchive) override;
+    virtual void ArchiveOut(ChArchiveOut& marchive) override;
 
     /// Method to allow de-serialization of transient data from archives.
-    virtual void ArchiveIN(ChArchiveIn& marchive) override;
+    virtual void ArchiveIn(ChArchiveIn& marchive) override;
 };
 
 }  // end namespace geometry

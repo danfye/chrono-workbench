@@ -173,12 +173,12 @@ void ChShaftsFreewheel::ConstraintsFetch_react(double factor) {
 
 //////// FILE I/O
 
-void ChShaftsFreewheel::ArchiveOUT(ChArchiveOut& marchive) {
+void ChShaftsFreewheel::ArchiveOut(ChArchiveOut& marchive) {
     // version number
     marchive.VersionWrite<ChShaftsFreewheel>();
 
     // serialize parent class
-    ChShaftsCouple::ArchiveOUT(marchive);
+    ChShaftsCouple::ArchiveOut(marchive);
 
     // serialize all member data:
     marchive << CHNVP(step);
@@ -189,12 +189,12 @@ void ChShaftsFreewheel::ArchiveOUT(ChArchiveOut& marchive) {
 }
 
 /// Method to allow de serialization of transient data from archives.
-void ChShaftsFreewheel::ArchiveIN(ChArchiveIn& marchive) {
+void ChShaftsFreewheel::ArchiveIn(ChArchiveIn& marchive) {
     // version number
     /*int version =*/ marchive.VersionRead<ChShaftsFreewheel>();
 
     // deserialize parent class:
-    ChShaftsCouple::ArchiveIN(marchive);
+    ChShaftsCouple::ArchiveIn(marchive);
 
     // deserialize all member data:
     marchive >> CHNVP(step);
@@ -202,6 +202,8 @@ void ChShaftsFreewheel::ArchiveIN(ChArchiveIn& marchive) {
     marchive >> CHNVP(phase);
     marchive >> CHNVP(alpha_max);
     marchive >> CHNVP(free_forward);
+    constraint.SetVariables(&shaft1->Variables(), &shaft2->Variables());
+
 }
 
 }  // end namespace chrono

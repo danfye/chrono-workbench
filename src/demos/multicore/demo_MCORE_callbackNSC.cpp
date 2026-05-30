@@ -119,7 +119,7 @@ int main(int argc, char* argv[]) {
 
     container->SetCollide(true);
     container->GetCollisionModel()->ClearModel();
-    utils::AddBoxGeometry(container.get(), material, ChVector<>(4, 0.5, 4), ChVector<>(0, -0.5, 0));
+    utils::AddBoxGeometry(container.get(), material, ChVector<>(8, 1, 8), ChVector<>(0, -0.5, 0));
     container->GetCollisionModel()->BuildModel();
 
     auto obj1 = std::shared_ptr<ChBody>(sys.NewBody());
@@ -155,7 +155,7 @@ int main(int argc, char* argv[]) {
     vis.SetWindowSize(1280, 720);
     vis.SetRenderMode(opengl::WIREFRAME);
     vis.Initialize();
-    vis.SetCameraPosition(ChVector<>(4, 4, -5), ChVector<>(0, 0, 0));
+    vis.AddCamera(ChVector<>(4, 4, -5), ChVector<>(0, 0, 0));
     vis.SetCameraVertical(CameraVerticalDir::Y);
 
     // Callback for contact reporting

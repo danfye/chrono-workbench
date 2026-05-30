@@ -23,32 +23,32 @@ namespace geometry {
 CH_FACTORY_REGISTER(ChCone)
 
 ChCone::ChCone(const ChCone& source) {
-    center = source.center;
-    rad = source.rad;
-}
-void ChCone::GetBoundingBox(ChVector<>& cmin, ChVector<>& cmax, const ChMatrix33<>& rot) const {
-    cmin = ChVector<>(-rad.x(), center.y() - rad.y() / 3.0, -rad.z());
-    cmin = ChVector<>(+rad.x(), center.y() + 2 * rad.y() / 3.0, +rad.z());
+    r = source.r;
+    h = source.h;
 }
 
-void ChCone::ArchiveOUT(ChArchiveOut& marchive) {
+ChGeometry::AABB ChCone::GetBoundingBox(const ChMatrix33<>& rot) const {
+    return AABB(ChVector<>(-r, -r, 0), ChVector<>(+r, +r, h));
+}
+
+void ChCone::ArchiveOut(ChArchiveOut& marchive) {
     // version number
     marchive.VersionWrite<ChCone>();
     // serialize parent class
-    ChGeometry::ArchiveOUT(marchive);
+    ChGeometry::ArchiveOut(marchive);
     // serialize all member data:
-    marchive << CHNVP(center);
-    marchive << CHNVP(rad);
+    marchive << CHNVP(r);
+    marchive << CHNVP(h);
 }
 
-void ChCone::ArchiveIN(ChArchiveIn& marchive) {
+void ChCone::ArchiveIn(ChArchiveIn& marchive) {
     // version number
     /*int version =*/ marchive.VersionRead<ChCone>();
     // deserialize parent class
-    ChGeometry::ArchiveIN(marchive);
+    ChGeometry::ArchiveIn(marchive);
     // stream in all member data:
-    marchive >> CHNVP(center);
-    marchive >> CHNVP(rad);
+    marchive >> CHNVP(r);
+    marchive >> CHNVP(h);
 }
 
 }  // end namespace geometry

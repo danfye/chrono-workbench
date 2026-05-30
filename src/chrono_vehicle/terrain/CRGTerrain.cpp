@@ -60,7 +60,13 @@ namespace chrono {
 namespace vehicle {
 
 CRGTerrain::CRGTerrain(ChSystem* system)
-    : m_use_vis_mesh(true), m_use_texture(false), m_post_distance(0.0), m_friction(0.8f), m_dataSetId(0), m_cpId(0), m_isClosed(false) {
+    : m_use_vis_mesh(true),
+      m_use_diffuseTexture(false),
+      m_post_distance(0.0),
+      m_friction(0.8f),
+      m_dataSetId(0),
+      m_cpId(0),
+      m_isClosed(false) {
     m_ground = std::shared_ptr<ChBody>(system->NewBody());
     m_ground->SetName("ground");
     m_ground->SetPos(ChVector<>(0, 0, 0));
@@ -84,12 +90,30 @@ void CRGTerrain::EnableVerbose(bool val) {
         crgMsgSetLevel(dCrgMsgLevelNone);
 }
 
-void CRGTerrain::SetRoadTextureFile(std::string texFile) {
-    m_texture_filename = GetChronoDataFile(texFile);
-    filesystem::path path(m_texture_filename);
-    if(path.is_file() && path.exists()) {
-        m_use_texture = true;
-        GetLog() << "Texture file " << m_texture_filename << " can be used.\n";
+void CRGTerrain::SetRoadDiffuseTextureFile(std::string texFile) {
+    m_diffuse_texture_filename = GetChronoDataFile(texFile);
+    filesystem::path path(m_diffuse_texture_filename);
+    if (path.is_file() && path.exists()) {
+        m_use_diffuseTexture = true;
+        GetLog() << "Diffuse Texture file " << m_diffuse_texture_filename << " can be used.\n";
+    }
+}
+
+void CRGTerrain::SetRoadNormalTextureFile(std::string texFile) {
+    m_normal_texture_filename = GetChronoDataFile(texFile);
+    filesystem::path path(m_normal_texture_filename);
+    if (path.is_file() && path.exists()) {
+        m_use_normalTexture = true;
+        GetLog() << "Normal Texture file " << m_normal_texture_filename << " can be used.\n";
+    }
+}
+
+void CRGTerrain::SetRoadRoughnessTextureFile(std::string texFile) {
+    m_rough_texture_filename = GetChronoDataFile(texFile);
+    filesystem::path path(m_rough_texture_filename);
+    if (path.is_file() && path.exists()) {
+        m_use_roughTexture = true;
+        GetLog() << "Roughness Texture file " << m_rough_texture_filename << " can be used.\n";
     }
 }
 
@@ -197,21 +221,14 @@ void CRGTerrain::SetRoadsidePosts() {
         if (crgEvaluv2z(m_cpId, u, vr, &zr) != 1) {
             GetLog() << "could not get zr in " << __func__ << "\n";
         }
-        geometry::ChCylinder cyl;
-        cyl.p1 = ChVector<>(0, 0, 0);
-        if (iu == 0)
-            cyl.p2 = ChVector<>(0, 0, 2.0);
-        else
-            cyl.p2 = ChVector<>(0, 0, 1.0);
-        cyl.rad = 0.07;
-        auto shape_l = chrono_types::make_shared<ChCylinderShape>(cyl);
-        ChFrame<> frame_l(ChVector<>(xl, yl, zl), QUNIT);
+
+        auto shape_l = chrono_types::make_shared<ChCylinderShape>(0.07, 1.0);
         shape_l->SetTexture(GetChronoDataFile("textures/redwhite.png"), 2.0, 2.0);
-        m_ground->AddVisualShape(shape_l, frame_l);
-        auto shape_r = chrono_types::make_shared<ChCylinderShape>(cyl);
-        ChFrame<> frame_r(ChVector<>(xr, yr, zr), QUNIT);
+        m_ground->AddVisualShape(shape_l, ChFrame<>(ChVector<>(xl, yl, zl + 0.5), QUNIT));
+
+        auto shape_r = chrono_types::make_shared<ChCylinderShape>(0.07, 1.0);
         shape_r->SetTexture(GetChronoDataFile("textures/redwhite.png"), 2.0, 2.0);
-        m_ground->AddVisualShape(shape_r, frame_r);
+        m_ground->AddVisualShape(shape_r, ChFrame<>(ChVector<>(xr, yr, zr + 0.5), QUNIT));
     }
 }
 
@@ -411,11 +428,11 @@ void CRGTerrain::GenerateMesh() {
         nv = static_cast<int>(m_v.size());
         for (auto i = 0; i < nu; i++) {
             double u = m_ubeg + m_uinc * double(i);
-            double tu = (u-m_ubeg)/(m_uend-m_ubeg);
+            double tu = (u - m_ubeg) / (m_uend - m_ubeg);
             for (auto j = 0; j < nv; j++) {
                 double x, y, z, v;
                 v = m_v[j];
-                double tv = (v-m_vbeg)/(m_vend-m_vbeg);
+                double tv = (v - m_vbeg) / (m_vend - m_vbeg);
                 int uv_ok = crgEvaluv2xy(m_cpId, u, v, &x, &y);
                 if (uv_ok != 1) {
                     GetLog() << "main: error during uv -> xy coordinate transformation in crg file\n";
@@ -435,10 +452,10 @@ void CRGTerrain::GenerateMesh() {
                 }
                 if (i == nu - 1 && m_isClosed) {
                     coords.push_back(ChWorldFrame::FromISO(ChVector<>(x0[j], y0[j], z0[j])));
-                    coords_uv.push_back(ChVector2<>(tu0[j],tv0[j]));
+                    coords_uv.push_back(ChVector2<>(tu0[j], tv0[j]));
                 } else {
                     coords.push_back(ChWorldFrame::FromISO(ChVector<>(x, y, z)));
-                    coords_uv.push_back(ChVector2<>(tu,tv));
+                    coords_uv.push_back(ChVector2<>(tu, tv));
                 }
             }
         }
@@ -447,10 +464,10 @@ void CRGTerrain::GenerateMesh() {
         nv = static_cast<int>((m_vend - m_vbeg) / m_vinc) + 1;
         for (auto i = 0; i < nu; i++) {
             double u = m_ubeg + m_uinc * double(i);
-            double tu = (u-m_ubeg)/(m_uend-m_ubeg);
+            double tu = (u - m_ubeg) / (m_uend - m_ubeg);
             for (auto j = 0; j < nv; j++) {
                 double v = m_vbeg + m_vinc * double(j);
-                double tv = (v-m_vbeg)/(m_vend-m_vbeg);
+                double tv = (v - m_vbeg) / (m_vend - m_vbeg);
                 double x, y, z;
                 int uv_ok = crgEvaluv2xy(m_cpId, u, v, &x, &y);
                 if (uv_ok != 1) {
@@ -471,10 +488,10 @@ void CRGTerrain::GenerateMesh() {
                 }
                 if (i == nu - 1 && m_isClosed) {
                     coords.push_back(ChWorldFrame::FromISO(ChVector<>(x0[j], y0[j], z0[j])));
-                    coords_uv.push_back(ChVector2<>(tu0[j],tv0[j]));
+                    coords_uv.push_back(ChVector2<>(tu0[j], tv0[j]));
                 } else {
                     coords.push_back(ChWorldFrame::FromISO(ChVector<>(x, y, z)));
-                    coords_uv.push_back(ChVector2<>(tu,tv));
+                    coords_uv.push_back(ChVector2<>(tu, tv));
                 }
             }
         }
@@ -493,15 +510,22 @@ void CRGTerrain::GenerateMesh() {
 }
 
 void CRGTerrain::SetupMeshGraphics() {
-    if(m_use_texture) {
+    if (m_use_diffuseTexture) {
         auto vmesh = chrono_types::make_shared<ChTriangleMeshShape>();
         vmesh->SetMesh(m_mesh);
         vmesh->SetName(m_mesh_name);
         auto material = chrono_types::make_shared<ChVisualMaterial>();
         material->SetDiffuseColor(ChColor(1.0f, 1.0f, 1.0f));
         material->SetAmbientColor(ChColor(1.0f, 1.0f, 1.0f));
-        material->SetEmissiveColor(ChColor(0.1f, 0.1f, 0.1f));
-        material->SetKdTexture(m_texture_filename, 0.5*GetLength()/GetWidth(), 1.0);
+        double scale_u = 0.5 * GetLength() / GetWidth();
+        double scale_w = 1.0;
+        material->SetTextureScale(scale_u, scale_w);
+        if (m_use_diffuseTexture)
+            material->SetKdTexture(m_diffuse_texture_filename);
+        if (m_use_normalTexture)
+            material->SetNormalMapTexture(m_normal_texture_filename);
+        if (m_use_roughTexture)
+            material->SetRoughnessTexture(m_rough_texture_filename);
         vmesh->SetMaterial(0, material);
         m_ground->AddVisualShape(vmesh);
         GetLog() << "Texture?\n";

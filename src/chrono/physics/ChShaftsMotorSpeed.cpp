@@ -274,12 +274,12 @@ void ChShaftsMotorSpeed::ConstraintsFetch_react(double factor) {
 
 //////// FILE I/O
 
-void ChShaftsMotorSpeed::ArchiveOUT(ChArchiveOut& marchive) {
+void ChShaftsMotorSpeed::ArchiveOut(ChArchiveOut& marchive) {
     // version number
     marchive.VersionWrite<ChShaftsMotorSpeed>();
 
     // serialize parent class
-    ChShaftsMotorBase::ArchiveOUT(marchive);
+    ChShaftsMotorBase::ArchiveOut(marchive);
 
     // serialize all member data:
     marchive << CHNVP(motor_torque);
@@ -290,18 +290,19 @@ void ChShaftsMotorSpeed::ArchiveOUT(ChArchiveOut& marchive) {
 }
 
 /// Method to allow de serialization of transient data from archives.
-void ChShaftsMotorSpeed::ArchiveIN(ChArchiveIn& marchive) {
+void ChShaftsMotorSpeed::ArchiveIn(ChArchiveIn& marchive) {
     // version number
     /*int version =*/ marchive.VersionRead<ChShaftsMotorSpeed>();
 
     // deserialize parent class:
-    ChShaftsMotorBase::ArchiveIN(marchive);
+    ChShaftsMotorBase::ArchiveIn(marchive);
 
     // deserialize all member data:
     marchive >> CHNVP(motor_torque);
     marchive >> CHNVP(f_speed);
     marchive >> CHNVP(rot_offset);
     marchive >> CHNVP(avoid_angle_drift);
+    constraint.SetVariables(&shaft1->Variables(), &shaft2->Variables());
 }
 
 

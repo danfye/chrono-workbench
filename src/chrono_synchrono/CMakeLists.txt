@@ -26,6 +26,13 @@ if(NOT ENABLE_MODULE_VEHICLE)
     return()
 endif()
 
+# Return now if the Chrono vehicle models are not enabled
+if(NOT ENABLE_MODULE_VEHICLE_MODELS)
+    message("Chrono::SynChrono depends on the vehicle models library which is disabled. Disabling Chrono::SynChrono")
+    set(ENABLE_MODULE_SYNCHRONO OFF CACHE BOOL "Enable the SynChrono module" FORCE)
+    return()
+endif()
+
 set(SYN_CXX_FLAGS "${CH_CXX_FLAGS}")
 set(SYN_LINKER_FLAGS "${CH_LINKERFLAG_SHARED}")
 set(SYN_LIBRARIES "")
@@ -51,12 +58,12 @@ set(SYN_LIBRARIES
 option(USE_FAST_DDS "Enable the FastDDS interface for the SynChrono Module" OFF)
 
 if (USE_FAST_DDS)
-	set(fastrtps_ROOT "" CACHE PATH "Path to FastDDS install dir")
+	set(fastrtps_INSTALL_DIR "" CACHE PATH "Path to FastDDS install dir")
 
-	if (fastrtps_ROOT STREQUAL "")
+	if (fastrtps_INSTALL_DIR STREQUAL "")
 	  set(FASTDDS_FOUND FALSE)
 	else()
-	  find_package(fastrtps REQUIRED PATHS "${fastrtps_ROOT}/cmake" "${fastrtps}/share/fastrtps/cmake")
+	  find_package(fastrtps REQUIRED PATHS "${fastrtps_INSTALL_DIR}/cmake" "${fastrtps}/share/fastrtps/cmake")
 	  
 	  message(STATUS "FastCDR found?        ${fastcdr_FOUND}")
 	  message(STATUS "FastCDR include dir:  ${fastcdr_INCLUDE_DIR}")
@@ -229,13 +236,15 @@ if (ENABLE_MODULE_IRRLICHT)
   list(APPEND SYN_LIB_NAMES ChronoEngine_irrlicht)
   list(APPEND SYN_LIB_NAMES ChronoEngine_vehicle_irrlicht)
 
-  set(SYN_INCLUDES  ${SYN_INCLUDES} ${CH_IRRLICHTINC})
+  set(SYN_INCLUDES  ${SYN_INCLUDES} ${CH_IRRLICHT_INCLUDES})
   set(SYN_CXX_FLAGS "${SYN_CXX_FLAGS} ${CH_IRRLICHT_CXX_FLAGS}")
 endif()
 
 # Chrono::Vehicle is required
 list(APPEND SYN_LIB_NAMES ChronoEngine_vehicle)
 list(APPEND SYN_LIB_NAMES ChronoModels_vehicle)
+
+list(APPEND SYN_LIB_NAMES ChronoModels_robot)
 
 # Set some variables to be visible outside this directory
 set(FASTDDS_FOUND "${FASTDDS_FOUND}" PARENT_SCOPE)

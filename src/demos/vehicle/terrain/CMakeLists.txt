@@ -3,49 +3,94 @@
 # These example programs require Irrlicht run-time visualization.
 #=============================================================================
 
-if(NOT ENABLE_MODULE_IRRLICHT)
-    return()
-endif()
-
 #--------------------------------------------------------------
 # List all demos
 
-set(DEMOS
-    demo_VEH_DeformableSoil
-    demo_VEH_RigidTerrain
-)
+set(DEMOS "")
 
-if(HAVE_OPENCRG)
+if(ENABLE_MODULE_IRRLICHT OR ENABLE_MODULE_VSG)
     set(DEMOS ${DEMOS}
-        demo_VEH_CRGTerrain
+        demo_VEH_RigidTerrain_WheeledVehicle
+        demo_VEH_SCMTerrain_WheeledVehicle
+    )
+endif()
+
+if(ENABLE_MODULE_IRRLICHT)
+    set(DEMOS ${DEMOS}  
+        demo_VEH_SCMTerrain_TrackedVehicle
+        demo_VEH_SCMTerrain_RigidTire
+    )
+endif()
+
+if(HAVE_OPENCRG AND ENABLE_MODULE_IRRLICHT)
+    set(DEMOS ${DEMOS}
+        demo_VEH_CRGTerrain_IRR
+    )
+endif()
+
+if(HAVE_OPENCRG AND ENABLE_MODULE_VSG)
+    set(DEMOS ${DEMOS}
+        demo_VEH_CRGTerrain_VSG
+        demo_VEH_FEDA_Road
     )
 endif()
 
 if(ENABLE_MODULE_MULTICORE AND ENABLE_MODULE_OPENGL)
     set(DEMOS ${DEMOS}
-        demo_VEH_GranularTerrain
-        demo_VEH_MovingPatch
+        demo_VEH_GranularTerrain_RigidTire
+        demo_VEH_GranularTerrain_MovingPatch
     )
 endif()
 
-if(ENABLE_MODULE_PARDISO_MKL)
+if(ENABLE_MODULE_FSI AND (ENABLE_MODULE_OPENGL OR ENABLE_MODULE_VSG))
     set(DEMOS ${DEMOS}
-        demo_VEH_DeformableSoilAndTire
+        demo_VEH_SPHTerrain_Obstacles
+        demo_VEH_SPHTerrain_WheeledVehicle
+        demo_VEH_SPHTerrain_TrackedVehicle
+        demo_VEH_SPHTerrain_Viper
+    )
+endif()
+
+if(ENABLE_MODULE_PARDISO_MKL AND ENABLE_MODULE_IRRLICHT)
+    set(DEMOS ${DEMOS}
+        demo_VEH_SCMTerrain_FEATire
     )
 endif()
 
 #--------------------------------------------------------------
 # Include directories, compiler flags, libraries
 
-include_directories(${CH_IRRLICHTINC})
-set(COMPILER_FLAGS "${CH_CXX_FLAGS}  ${CH_IRRLICHT_CXX_FLAGS}")
+set(COMPILER_FLAGS "${CH_CXX_FLAGS}")
 set(LINKER_FLAGS "${CH_LINKERFLAG_EXE}")
-list(APPEND LIBS "")
+list(APPEND LIBS "ChronoEngine")
+list(APPEND LIBS "ChronoEngine_vehicle")
+list(APPEND LIBS "ChronoModels_vehicle")
+list(APPEND LIBS "ChronoModels_robot")
+
+if(ENABLE_MODULE_IRRLICHT)
+    include_directories(${CH_IRRLICHT_INCLUDES})
+    set(COMPILER_FLAGS "${COMPILER_FLAGS} ${CH_IRRLICHT_CXX_FLAGS}")
+    list(APPEND LIBS "ChronoEngine_irrlicht")
+    list(APPEND LIBS "ChronoEngine_vehicle_irrlicht")
+endif()
+
+if(ENABLE_MODULE_VSG)
+    set(CMAKE_CXX_STANDARD 17)
+
+    include_directories(${CH_VSG_INCLUDES})
+    list(APPEND LIBS "ChronoEngine_vsg")
+    list(APPEND LIBS "ChronoEngine_vehicle_vsg")
+endif()
 
 if(ENABLE_MODULE_MULTICORE)
     include_directories(${CH_MULTICORE_INCLUDES})
     set(COMPILER_FLAGS "${CH_CXX_FLAGS}  ${CH_MULTICORE_CXX_FLAGS}")
     list(APPEND LIBS "ChronoEngine_multicore")
+endif()
+
+if(ENABLE_MODULE_FSI)
+    include_directories(${CH_FSI_INCLUDES})
+    list(APPEND LIBS "ChronoEngine_fsi")
 endif()
 
 if(ENABLE_MODULE_PARDISO_MKL)
@@ -74,20 +119,12 @@ foreach(PROGRAM ${DEMOS})
     add_executable(${PROGRAM} ${PROGRAM}.cpp)
     source_group("" FILES ${PROGRAM}.cpp)
 
-    set_target_properties(${PROGRAM} PROPERTIES
-                          COMPILE_FLAGS "${COMPILER_FLAGS}"
-                          LINK_FLAGS "${LINKER_FLAGS}")
+    set_target_properties(${PROGRAM} PROPERTIES COMPILE_FLAGS "${COMPILER_FLAGS}" LINK_FLAGS "${LINKER_FLAGS}")
     if(APPLE)
       set_target_properties(${PROGRAM} PROPERTIES MACOSX_BUNDLE_INFO_PLIST ${MACOSX_BUNDLE_INFO_PLIST})
     endif()
     set_property(TARGET ${PROGRAM} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:${PROGRAM}>")
-    target_link_libraries(${PROGRAM}
-                          ChronoEngine
-                          ChronoEngine_irrlicht
-                          ChronoEngine_vehicle
-                          ChronoEngine_vehicle_irrlicht
-                          ChronoModels_vehicle
-                          ${LIBS})
+    target_link_libraries(${PROGRAM} ${LIBS})
 
     install(TARGETS ${PROGRAM} DESTINATION ${CH_INSTALL_DEMO})
 endforeach()

@@ -90,11 +90,9 @@ void RCCar::Initialize() {
     }
 
     // Create and initialize the powertrain system
-    auto powertrain = chrono_types::make_shared<RCCar_SimpleMapPowertrain>("Powertrain");
-    powertrain->m_voltage_ratio = m_voltage_ratio;
-    powertrain->m_stall_torque = m_stall_torque;
-    powertrain->m_motor_resistance_c0 = m_motor_resistance_c0;
-    powertrain->m_motor_resistance_c1 = m_motor_resistance_c1;
+    auto engine = chrono_types::make_shared<RCCar_EngineSimpleMap>("Engine");
+    auto transmission = chrono_types::make_shared<RCCar_AutomaticTransmissionSimpleMap>("Transmission");
+    auto powertrain = chrono_types::make_shared<ChPowertrainAssembly>(engine, transmission);
     m_vehicle->InitializePowertrain(powertrain);
 
     // Create the tires and set parameters depending on type.
@@ -110,11 +108,6 @@ void RCCar::Initialize() {
             m_vehicle->InitializeTire(tire_FR, m_vehicle->GetAxle(0)->m_wheels[RIGHT], VisualizationType::NONE);
             m_vehicle->InitializeTire(tire_RL, m_vehicle->GetAxle(1)->m_wheels[LEFT], VisualizationType::NONE);
             m_vehicle->InitializeTire(tire_RR, m_vehicle->GetAxle(1)->m_wheels[RIGHT], VisualizationType::NONE);
-
-            tire_FL->SetRollingResistanceCoefficients(m_rolling_friction_coeff, m_rolling_friction_coeff);
-            tire_FR->SetRollingResistanceCoefficients(m_rolling_friction_coeff, m_rolling_friction_coeff);
-            tire_RL->SetRollingResistanceCoefficients(m_rolling_friction_coeff, m_rolling_friction_coeff);
-            tire_RR->SetRollingResistanceCoefficients(m_rolling_friction_coeff, m_rolling_friction_coeff);
 
             m_tire_mass = tire_FL->GetMass();
             break;

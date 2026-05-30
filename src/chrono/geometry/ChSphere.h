@@ -24,19 +24,23 @@ namespace geometry {
 class ChApi ChSphere : public ChGeometry {
   public:
     ChSphere() : rad(0) {}
-    ChSphere(const ChVector<>& mc, double mrad) : rad(mrad) {}
+    ChSphere(double radius) : rad(radius) {}
     ChSphere(const ChSphere& source);
     ~ChSphere() {}
 
     /// "Virtual" copy constructor (covariant return type).
     virtual ChSphere* Clone() const override { return new ChSphere(*this); }
 
-    virtual GeometryType GetClassType() const override { return SPHERE; }
+     /// Get the class type as an enum.
+    virtual Type GetClassType() const override { return Type::SPHERE; }
+
+    /// Get the sphere radius.
+    double GetRadius() const { return rad; }
 
     /// Compute bounding box along the directions defined by the given rotation matrix.
-    virtual void GetBoundingBox(ChVector<>& cmin, ChVector<>& cmax, const ChMatrix33<>& rot) const override;
+    virtual AABB GetBoundingBox(const ChMatrix33<>& rot) const override;
 
-    /// Returns the radius of a bounding sphere for this geometry.
+    /// Return the radius of a bounding sphere for this geometry.
     virtual double GetBoundingSphereRadius() const override;
 
     virtual ChVector<> Baricenter() const override { return ChVector<>(0); }
@@ -45,10 +49,10 @@ class ChApi ChSphere : public ChGeometry {
     virtual int GetManifoldDimension() const override { return 3; }
 
     /// Method to allow serialization of transient data to archives.
-    virtual void ArchiveOUT(ChArchiveOut& marchive) override;
+    virtual void ArchiveOut(ChArchiveOut& marchive) override;
 
     /// Method to allow de-serialization of transient data from archives.
-    virtual void ArchiveIN(ChArchiveIn& marchive) override;
+    virtual void ArchiveIn(ChArchiveIn& marchive) override;
 
     double rad;  ///< sphere radius
 };

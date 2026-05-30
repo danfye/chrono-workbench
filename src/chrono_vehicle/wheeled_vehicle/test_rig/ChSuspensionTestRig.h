@@ -31,7 +31,7 @@
 
 #include "chrono_vehicle/wheeled_vehicle/ChTire.h"
 #include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicle.h"
-#include "chrono_vehicle/wheeled_vehicle/test_rig/ChDriverSTR.h"
+#include "chrono_vehicle/wheeled_vehicle/test_rig/ChSuspensionTestRigDriver.h"
 
 namespace chrono {
 namespace vehicle {
@@ -46,7 +46,7 @@ class CH_VEHICLE_API ChSuspensionTestRig {
     virtual ~ChSuspensionTestRig();
 
     /// Set driver system.
-    void SetDriver(std::shared_ptr<ChDriverSTR> driver);
+    void SetDriver(std::shared_ptr<ChSuspensionTestRigDriver> driver);
 
     /// Set the initial ride height (relative to the chassis reference frame).
     /// If not specified, the reference height is the suspension design configuration.
@@ -207,7 +207,7 @@ class CH_VEHICLE_API ChSuspensionTestRig {
 
   private:
     std::unique_ptr<ChTerrain> m_terrain;   ///< terrain object to provide height to the tires
-    std::shared_ptr<ChDriverSTR> m_driver;  ///< driver system
+    std::shared_ptr<ChSuspensionTestRigDriver> m_driver;  ///< driver system
     double m_steering_input;                ///< current driver steering input
     std::vector<double> m_left_inputs;      ///< current driver left post inputs
     std::vector<double> m_right_inputs;     ///< current driver right post inputs
@@ -225,6 +225,7 @@ class CH_VEHICLE_API ChSuspensionTestRig {
     double m_plot_output_step;
     double m_next_plot_output_time;
     utils::CSV_writer* m_csv;
+    std::vector<int> m_csv_lengths;
 };
 
 // -----------------------------------------------------------------------------
@@ -272,8 +273,8 @@ class CH_VEHICLE_API ChSuspensionTestRigPlatform : public ChSuspensionTestRig {
     std::vector<std::shared_ptr<ChLinkMotorLinearPosition>> m_linact_L;  ///< left post linear actuators
     std::vector<std::shared_ptr<ChLinkMotorLinearPosition>> m_linact_R;  ///< right post linear actuators
 
-    static const double m_post_radius;   ///< radius of the post cylindrical platform
-    static const double m_post_hheight;  ///< half-height of the post cylindrical platform
+    static const double m_post_radius;  ///< radius of the post cylindrical platform
+    static const double m_post_height;  ///< height of the post cylindrical platform
 };
 
 // -----------------------------------------------------------------------------

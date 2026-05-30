@@ -177,38 +177,29 @@ void ChRotationalDamperSuspension::AddVisualizationAssets(VisualizationType vis)
     double radius = GetArmVisRadius();
 
     if ((m_pA - m_pAW).Length2() > threshold2) {
-        auto cyl = chrono_types::make_shared<ChCylinderShape>();
-        cyl->GetCylinderGeometry().p1 = m_pA;
-        cyl->GetCylinderGeometry().p2 = m_pAW;
-        cyl->GetCylinderGeometry().rad = radius;
-        m_arm->AddVisualShape(cyl);
+        ChVehicleGeometry::AddVisualizationCylinder(m_arm, m_pA, m_pAW, radius);
     }
 
     if ((m_pA - m_pAC).Length2() > threshold2) {
-        auto cyl = chrono_types::make_shared<ChCylinderShape>();
-        cyl->GetCylinderGeometry().p1 = m_pA;
-        cyl->GetCylinderGeometry().p2 = m_pAC;
-        cyl->GetCylinderGeometry().rad = radius;
-        m_arm->AddVisualShape(cyl);
+        ChVehicleGeometry::AddVisualizationCylinder(m_arm, m_pA, m_pAC, radius);
     }
 
     // Revolute joint (arm-chassis)
     {
-        auto cyl = chrono_types::make_shared<ChCylinderShape>();
-        cyl->GetCylinderGeometry().p1 = m_pAC - radius * m_dY;
-        cyl->GetCylinderGeometry().p2 = m_pAC + radius * m_dY;
-        cyl->GetCylinderGeometry().rad = 1.5 * radius;
-        m_arm->AddVisualShape(cyl);
+        ChVehicleGeometry::AddVisualizationCylinder(m_arm,                  //
+                                                    m_pAC - radius * m_dY,  //
+                                                    m_pAC + radius * m_dY,  //
+                                                    1.5 * radius);
     }
 
     // Revolute joint (arm-wheel)
     if ((m_pO - m_pAW).Length2() > threshold2) {
         auto cyl = chrono_types::make_shared<ChCylinderShape>();
         double len = (m_pO - m_pAW).Length();
-        cyl->GetCylinderGeometry().p1 = m_pO;
-        cyl->GetCylinderGeometry().p2 = m_pAW + (m_pAW - m_pO) * radius / len;
-        cyl->GetCylinderGeometry().rad = radius;
-        m_arm->AddVisualShape(cyl);
+        ChVehicleGeometry::AddVisualizationCylinder(m_arm,                                  //
+                                                    m_pO,                                   //
+                                                    m_pAW + (m_pAW - m_pO) * radius / len,  //
+                                                    radius);
     }
 }
 
@@ -237,19 +228,19 @@ void ChRotationalDamperSuspension::ExportComponentList(rapidjson::Document& json
 
     std::vector<std::shared_ptr<ChBody>> bodies;
     bodies.push_back(m_arm);
-    ChPart::ExportBodyList(jsonDocument, bodies);
+    ExportBodyList(jsonDocument, bodies);
 
     std::vector<std::shared_ptr<ChLink>> joints;
     std::vector<std::shared_ptr<ChLoadBodyBody>> bushings;
     m_joint->IsKinematic() ? joints.push_back(m_joint->GetAsLink()) : bushings.push_back(m_joint->GetAsBushing());
-    ChPart::ExportJointList(jsonDocument, joints);
-    ChPart::ExportBodyLoadList(jsonDocument, bushings);
+    ExportJointList(jsonDocument, joints);
+    ExportBodyLoadList(jsonDocument, bushings);
 
     std::vector<std::shared_ptr<ChLinkRSDA>> rot_springs;
     rot_springs.push_back(m_spring);
     if (m_has_shock)
         rot_springs.push_back(m_shock);
-    ChPart::ExportRotSpringList(jsonDocument, rot_springs);
+    ExportRotSpringList(jsonDocument, rot_springs);
 }
 
 void ChRotationalDamperSuspension::Output(ChVehicleOutput& database) const {

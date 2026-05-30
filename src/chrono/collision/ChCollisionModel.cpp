@@ -14,6 +14,7 @@
 
 #include "chrono/collision/ChCollisionModel.h"
 #include "chrono/physics/ChBody.h"
+#include "chrono/geometry/ChLineSegment.h"
 
 namespace chrono {
 namespace collision {
@@ -104,6 +105,21 @@ void ChCollisionModel::SetFamilyMask(short int mask) {
     family_mask = mask;
 }
 
+bool ChCollisionModel::AddCylinder(std::shared_ptr<ChMaterialSurface> material,
+                                   double radius,
+                                   const ChVector<>& p1,
+                                   const ChVector<>& p2) {
+    geometry::ChLineSegment seg(p1, p2);
+    auto height = seg.GetLength();
+    auto frame = seg.GetFrame();
+
+    std::cout << height << std::endl;
+    std::cout << frame.GetPos() << std::endl;
+    std::cout << frame.GetA() << std::endl;
+
+    return AddCylinder(material, radius, height, frame.GetPos(), frame.GetA());
+}
+
 bool ChCollisionModel::AddConvexHullsFromFile(std::shared_ptr<ChMaterialSurface> material,
                                               ChStreamInAscii& mstream,
                                               const ChVector<>& pos,
@@ -166,7 +182,7 @@ void ChCollisionModel::SetAllShapesMaterial(std::shared_ptr<ChMaterialSurface> m
         shape->m_material = mat;
 }
 
-void ChCollisionModel::ArchiveOUT(ChArchiveOut& marchive) {
+void ChCollisionModel::ArchiveOut(ChArchiveOut& marchive) {
     // version number
     marchive.VersionWrite<ChCollisionModel>();
 
@@ -175,7 +191,7 @@ void ChCollisionModel::ArchiveOUT(ChArchiveOut& marchive) {
     marchive << CHNVP(model_safe_margin);
 }
 
-void ChCollisionModel::ArchiveIN(ChArchiveIn& marchive) {
+void ChCollisionModel::ArchiveIn(ChArchiveIn& marchive) {
     // version number
     /*int version =*/ marchive.VersionRead<ChCollisionModel>();
 

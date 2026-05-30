@@ -24,24 +24,34 @@ ChBoxShape::ChBoxShape() {
     SetMutable(false);
 }
 
+ChBoxShape::ChBoxShape(double length_x, double length_y, double length_z) {
+    gbox.SetLengths(ChVector<>(length_x, length_y, length_z));
+    SetMutable(false);
+}
+
+ChBoxShape::ChBoxShape(const ChVector<>& lengths) {
+    gbox.SetLengths(lengths);
+    SetMutable(false);
+}
+
 ChBoxShape::ChBoxShape(const geometry::ChBox& box) : gbox(box) {
     SetMutable(false);
 }
 
-void ChBoxShape::ArchiveOUT(ChArchiveOut& marchive) {
+void ChBoxShape::ArchiveOut(ChArchiveOut& marchive) {
     // version number
     marchive.VersionWrite<ChBoxShape>();
     // serialize parent class
-    ChVisualShape::ArchiveOUT(marchive);
+    ChVisualShape::ArchiveOut(marchive);
     // serialize all member data:
     marchive << CHNVP(gbox);
 }
 
-void ChBoxShape::ArchiveIN(ChArchiveIn& marchive) {
+void ChBoxShape::ArchiveIn(ChArchiveIn& marchive) {
     // version number
     /*int version =*/ marchive.VersionRead<ChBoxShape>();
     // deserialize parent class
-    ChVisualShape::ArchiveIN(marchive);
+    ChVisualShape::ArchiveIn(marchive);
     // stream in all member data:
     marchive >> CHNVP(gbox);
 }

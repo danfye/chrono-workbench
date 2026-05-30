@@ -29,6 +29,12 @@
 #include "chrono_vehicle/ChVehicleModelData.h"
 #include "chrono_vehicle/utils/ChUtilsJSON.h"
 #include "chrono_vehicle/wheeled_vehicle/vehicle/WheeledVehicle.h"
+#ifdef CHRONO_IRRLICHT
+    #include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicleVisualSystemIrrlicht.h"
+#endif
+#ifdef CHRONO_VSG
+    #include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicleVisualSystemVSG.h"
+#endif
 
 #include "chrono_vehicle/cosim/mbs/ChVehicleCosimWheeledVehicleNode.h"
 
@@ -64,15 +70,18 @@ class WheeledVehicleDBPDriver : public ChDriver {
 // -----------------------------------------------------------------------------
 
 ChVehicleCosimWheeledVehicleNode::ChVehicleCosimWheeledVehicleNode(const std::string& vehicle_json,
-                                                                   const std::string& powertrain_json)
+                                                                   const std::string& engine_json,
+                                                                   const std::string& transmission_json)
     : ChVehicleCosimWheeledMBSNode(), m_num_spindles(0), m_init_yaw(0), m_chassis_fixed(false) {
     m_vehicle = chrono_types::make_shared<WheeledVehicle>(m_system, vehicle_json);
-    m_powertrain = ReadPowertrainJSON(powertrain_json);
+    auto engine = ReadEngineJSON(engine_json);
+    auto transmission = ReadTransmissionJSON(transmission_json);
+    m_powertrain = chrono_types::make_shared<ChPowertrainAssembly>(engine, transmission);
     m_terrain = chrono_types::make_shared<ChTerrain>();
 }
 
 ChVehicleCosimWheeledVehicleNode::ChVehicleCosimWheeledVehicleNode(std::shared_ptr<ChWheeledVehicle> vehicle,
-                                                                   std::shared_ptr<ChPowertrain> powertrain)
+                                                                   std::shared_ptr<ChPowertrainAssembly> powertrain)
     : ChVehicleCosimWheeledMBSNode(), m_num_spindles(0), m_init_yaw(0), m_chassis_fixed(false) {
     // Ensure the vehicle system has a null ChSystem
     if (vehicle->GetSystem())
@@ -90,14 +99,12 @@ ChVehicleCosimWheeledVehicleNode::~ChVehicleCosimWheeledVehicleNode() {}
 
 // -----------------------------------------------------------------------------
 
-void ChVehicleCosimWheeledVehicleNode::InitializeMBS(const std::vector<ChVector<>>& tire_info,
-                                                     const ChVector2<>& terrain_size,
-                                                     double terrain_height) {
+void ChVehicleCosimWheeledVehicleNode::InitializeMBS(const ChVector2<>& terrain_size, double terrain_height) {
     // Initialize vehicle
     ChCoordsys<> init_pos(m_init_loc + ChVector<>(0, 0, terrain_height), Q_from_AngZ(m_init_yaw));
 
     m_vehicle->Initialize(init_pos);
-    m_vehicle->GetChassis()->SetFixed(m_chassis_fixed);    
+    m_vehicle->GetChassis()->SetFixed(m_chassis_fixed);
     m_vehicle->SetChassisVisualizationType(VisualizationType::MESH);
     m_vehicle->SetSuspensionVisualizationType(VisualizationType::PRIMITIVES);
     m_vehicle->SetSteeringVisualizationType(VisualizationType::PRIMITIVES);
@@ -106,6 +113,56 @@ void ChVehicleCosimWheeledVehicleNode::InitializeMBS(const std::vector<ChVector<
     // Initialize powertrain
     m_vehicle->InitializePowertrain(m_powertrain);
 
+    // Extract and cache spindle bodies
+    auto num_axles = m_vehicle->GetNumberAxles();
+
+    m_num_spindles = 2 * num_axles;
+    assert(m_num_spindles == (int)m_num_tire_nodes);
+
+    auto total_mass = m_vehicle->GetMass();
+    for (int is = 0; is < m_num_spindles; is++) {
+        m_spindle_loads.push_back(total_mass / m_num_spindles);
+    }
+
+    // Initialize run-time visualization
+    if (m_renderRT) {
+#if defined(CHRONO_VSG)
+        auto vsys_vsg = chrono_types::make_shared<ChWheeledVehicleVisualSystemVSG>();
+        vsys_vsg->AttachVehicle(m_vehicle.get());
+        vsys_vsg->SetWindowTitle("Wheeled Vehicle Node");
+        vsys_vsg->SetWindowSize(ChVector2<int>(1280, 720));
+        vsys_vsg->SetWindowPosition(ChVector2<int>(100, 300));
+        vsys_vsg->SetChaseCamera(ChVector<>(0, 0, 1.5), 6.0, 0.5);
+        vsys_vsg->SetChaseCameraState(utils::ChChaseCamera::Track);
+        vsys_vsg->SetChaseCameraPosition(m_cam_pos);
+        vsys_vsg->SetUseSkyBox(true);
+        vsys_vsg->SetCameraAngleDeg(40);
+        vsys_vsg->SetLightIntensity(1.0f);
+        vsys_vsg->SetLightDirection(1.5 * CH_C_PI_2, CH_C_PI_4);
+        vsys_vsg->AddGrid(1.0, 1.0, (int)(terrain_size.x() / 1.0), (int)(terrain_size.y() / 1.0), CSYSNORM,
+                          ChColor(0.1f, 0.3f, 0.1f));
+        vsys_vsg->Initialize();
+
+        m_vsys = vsys_vsg;
+#elif defined(CHRONO_IRRLICHT)
+        auto vsys_irr = chrono_types::make_shared<ChWheeledVehicleVisualSystemIrrlicht>();
+        vsys_irr->AttachVehicle(m_vehicle.get());
+        vsys_irr->SetWindowTitle("Wheeled Vehicle Node");
+        vsys_irr->SetWindowSize(1280, 720);
+        vsys_irr->SetChaseCamera(ChVector<>(0, 0, 1.5), 6.0, 0.5);
+        vsys_irr->SetChaseCameraState(utils::ChChaseCamera::Track);
+        vsys_irr->SetChaseCameraPosition(m_cam_pos);
+        vsys_irr->Initialize();
+        vsys_irr->AddLightDirectional();
+        vsys_irr->AddSkyBox();
+        vsys_irr->AddLogo();
+
+        m_vsys = vsys_irr;
+#endif
+    }
+}
+
+void ChVehicleCosimWheeledVehicleNode::ApplyTireInfo(const std::vector<ChVector<>>& tire_info) {
     // Create and initialize the dummy tires
     int itire = 0;
     for (auto& axle : m_vehicle->GetAxles()) {
@@ -116,18 +173,6 @@ void ChVehicleCosimWheeledVehicleNode::InitializeMBS(const std::vector<ChVector<
             m_tires.push_back(tire);
             itire++;
         }
-    }
-
-    // Extract and cache spindle bodies
-    auto num_axles = m_vehicle->GetNumberAxles();
-
-    m_num_spindles = 2 * num_axles;
-    assert(m_num_spindles == (int)m_num_tire_nodes);
-
-    auto total_mass = m_vehicle->GetMass();
-    for (int is = 0; is < m_num_spindles; is++) {
-        auto tire_mass = tire_info[is].x();
-        m_spindle_loads.push_back(tire_mass + total_mass / m_num_spindles);
     }
 }
 
@@ -172,7 +217,7 @@ void ChVehicleCosimWheeledVehicleNode::OnInitializeDBPRig(std::shared_ptr<ChFunc
 
 // -----------------------------------------------------------------------------
 
-void ChVehicleCosimWheeledVehicleNode::PreAdvance() {
+void ChVehicleCosimWheeledVehicleNode::PreAdvance(double step_size) {
     // Synchronize vehicle systems
     double time = m_vehicle->GetChTime();
     DriverInputs driver_inputs;
@@ -185,6 +230,14 @@ void ChVehicleCosimWheeledVehicleNode::PreAdvance() {
         driver_inputs.m_braking = 0;
     }
     m_vehicle->Synchronize(time, driver_inputs, *m_terrain);
+    if (m_vsys)
+        m_vsys->Synchronize(time, driver_inputs);
+}
+
+void ChVehicleCosimWheeledVehicleNode::PostAdvance(double step_size) {
+    m_vehicle->Advance(step_size);
+    if (m_vsys)
+      m_vsys->Advance(step_size);
 }
 
 void ChVehicleCosimWheeledVehicleNode::ApplySpindleForce(unsigned int i, const TerrainForce& spindle_force) {
@@ -194,6 +247,16 @@ void ChVehicleCosimWheeledVehicleNode::ApplySpindleForce(unsigned int i, const T
 }
 
 // -----------------------------------------------------------------------------
+
+void ChVehicleCosimWheeledVehicleNode::OnRender() {
+    if (!m_vsys)
+      return;
+    if (!m_vsys->Run())
+        MPI_Abort(MPI_COMM_WORLD, 1);
+    m_vsys->BeginScene();
+    m_vsys->Render();
+    m_vsys->EndScene();
+}
 
 void ChVehicleCosimWheeledVehicleNode::OnOutputData(int frame) {
     // Append to results output file

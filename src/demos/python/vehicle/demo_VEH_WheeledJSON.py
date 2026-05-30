@@ -31,7 +31,9 @@ def main() :
     vehicle.SetWheelVisualizationType(veh.VisualizationType_NONE)
 
     # Create and initialize the powertrain system
-    powertrain = veh.ReadPowertrainJSON(powertrain_file)
+    engine = veh.ReadEngineJSON(engine_file)
+    transmission = veh.ReadTransmissionJSON(transmission_file)
+    powertrain = veh.ChPowertrainAssembly(engine, transmission)
     vehicle.InitializePowertrain(powertrain)
 
     # Create and initialize the tires
@@ -56,7 +58,7 @@ def main() :
     vis.AttachVehicle(vehicle)
 
     # Create the interactive driver
-    driver = veh.ChIrrGuiDriver(vis)
+    driver = veh.ChInteractiveDriverIRR(vis)
     driver.SetSteeringDelta(0.02)
     driver.SetThrottleDelta(0.02)
     driver.SetBrakingDelta(0.02)
@@ -90,7 +92,7 @@ def main() :
         driver.Synchronize(time)
         vehicle.Synchronize(time, driver_inputs, terrain)
         terrain.Synchronize(time)
-        vis.Synchronize(driver.GetInputModeAsString(), driver_inputs)
+        vis.Synchronize(time, driver_inputs)
 
         # Advance simulation for one timestep for all modules
         driver.Advance(step_size)
@@ -112,7 +114,8 @@ rigidterrain_file = veh.GetDataFile('terrain/RigidPlane.json')
 
 # HMMWV specification files (vehicle, powertrain, and tire models)
 vehicle_file = veh.GetDataFile('hmmwv/vehicle/HMMWV_Vehicle.json')
-powertrain_file = veh.GetDataFile('hmmwv/powertrain/HMMWV_ShaftsPowertrain.json')
+engine_file = veh.GetDataFile('hmmwv/powertrain/HMMWV_EngineShafts.json')
+transmission_file = veh.GetDataFile('hmmwv/powertrain/HMMWV_AutomaticTransmissionShafts.json')
 tire_file = veh.GetDataFile('hmmwv/tire/HMMWV_Pac02Tire.json')
 
 # ACV specification files (vehicle, powertrain, and tire models)

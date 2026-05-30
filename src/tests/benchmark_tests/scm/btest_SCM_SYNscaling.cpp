@@ -29,7 +29,7 @@
 
 #include "chrono_vehicle/ChConfigVehicle.h"
 #include "chrono_vehicle/ChVehicleModelData.h"
-#include "chrono_vehicle/terrain/SCMDeformableTerrain.h"
+#include "chrono_vehicle/terrain/SCMTerrain.h"
 #include "chrono_vehicle/driver/ChPathFollowerDriver.h"
 #include "chrono_vehicle/utils/ChVehiclePath.h"
 
@@ -44,7 +44,7 @@
 #include "chrono_synchrono/utils/SynLog.h"
 
 #ifdef CHRONO_IRRLICHT
-    #include "chrono_vehicle/wheeled_vehicle/utils/ChWheeledVehicleVisualSystemIrrlicht.h"
+    #include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicleVisualSystemIrrlicht.h"
 #endif
 
 #include "chrono_thirdparty/cxxopts/ChCLI.h"
@@ -218,7 +218,8 @@ int main(int argc, char* argv[]) {
     HMMWV_Full hmmwv(&sys);
     hmmwv.SetChassisFixed(false);
     hmmwv.SetInitPosition(ChCoordsys<>(init_loc, init_rot));
-    hmmwv.SetPowertrainType(PowertrainModelType::SHAFTS);
+    hmmwv.SetEngineType(EngineModelType::SHAFTS);
+    hmmwv.SetTransmissionType(TransmissionModelType::SHAFTS);
     hmmwv.SetDriveType(DrivelineTypeWV::AWD);
     hmmwv.SetTireType(TireModelType::RIGID);
     hmmwv.SetTireStepSize(step_size);
@@ -269,7 +270,7 @@ int main(int argc, char* argv[]) {
     // ----------------------
     // Terrain specific setup
     // ----------------------
-    SCMDeformableTerrain terrain(&sys, visualize);
+    SCMTerrain terrain(&sys, visualize);
     terrain.SetSoilParameters(2e6,   // Bekker Kphi
                               0,     // Bekker Kc
                               1.1,   // Bekker n exponent
@@ -301,12 +302,12 @@ int main(int argc, char* argv[]) {
         terrain.AddMovingPatch(hmmwv.GetChassisBody(), ChVector<>(0, 0, 0), ChVector<>(5, 3, 1));
     }
 
-    terrain.SetPlotType(vehicle::SCMDeformableTerrain::PLOT_SINKAGE, 0, 0.1);
+    terrain.SetPlotType(vehicle::SCMTerrain::PLOT_SINKAGE, 0, 0.1);
 
     terrain.Initialize(terrainLength, terrainWidth, delta);
 
     // Create an SCMTerrainAgent and add it to the SynChrono manager
-    auto scm = chrono_types::make_shared<SCMDeformableTerrain>(terrain);
+    auto scm = chrono_types::make_shared<SCMTerrain>(terrain);
     auto terrain_agent = chrono_types::make_shared<SynSCMTerrainAgent>(scm);
     syn_manager.AddAgent(terrain_agent);
 
@@ -350,7 +351,7 @@ int main(int argc, char* argv[]) {
 
     double chrono_step = 0;
 
-    ChTimer<> timer;
+    ChTimer timer;
     timer.start();
 
     while (true) {
@@ -424,7 +425,7 @@ int main(int argc, char* argv[]) {
         hmmwv.Synchronize(time, driver_inputs, terrain);
 #ifdef CHRONO_IRRLICHT
         if (vis)
-            vis->Synchronize("", driver_inputs);
+            vis->Synchronize(time, driver_inputs);
 #endif
 
         driver.Advance(step_size);

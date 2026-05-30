@@ -4,6 +4,8 @@
 # Cannot be used stand-alone (it's loaded by CMake config. file in parent dir.)
 #=============================================================================
 
+option(ENABLE_MODULE_PYTHON "Enable the Chrono Python module" OFF)
+
 # Return now if this module is not enabled
 if(NOT ENABLE_MODULE_PYTHON)
   mark_as_advanced(FORCE SWIG_EXECUTABLE)
@@ -438,7 +440,7 @@ if(ENABLE_MODULE_IRRLICHT)
       ../interface/irrlicht/ChModuleIrrlicht.i
       )
 
-  include_directories(${CH_IRRLICHTINC})
+  include_directories(${CH_IRRLICHT_INCLUDES})
 
   if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     set_source_files_properties(${CHPY_IRRLICHT_MODULE_FILE} PROPERTIES COMPILE_FLAGS "-D_WIN32")
@@ -658,7 +660,7 @@ endif()
 # MODULE for the vehicle python wrapper.
 #-----------------------------------------------------------------------------
 
-if(ENABLE_MODULE_VEHICLE)
+if(ENABLE_MODULE_VEHICLE AND ENABLE_MODULE_VEHICLE_MODELS)
 
   message(STATUS "...add python vehicle module:  pychrono.vehicle")
 

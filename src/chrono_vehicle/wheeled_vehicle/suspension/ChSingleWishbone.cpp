@@ -77,6 +77,8 @@ void ChSingleWishbone::Initialize(std::shared_ptr<ChChassis> chassis,
                                   const ChVector<>& location,
                                   double left_ang_vel,
                                   double right_ang_vel) {
+    ChSuspension::Initialize(chassis, subchassis, steering, location, left_ang_vel, right_ang_vel);
+
     m_parent = chassis;
     m_rel_loc = location;
 
@@ -222,6 +224,7 @@ void ChSingleWishbone::InitializeSide(VehicleSide side,
     m_shock[side] = chrono_types::make_shared<ChLinkTSDA>();
     m_shock[side]->SetNameString(m_name + "_shock" + suffix);
     m_shock[side]->Initialize(chassis->GetBody(), m_control_arm[side], false, points[STRUT_C], points[STRUT_A]);
+    m_shock[side]->SetRestLength(getShockRestLength());
     m_shock[side]->RegisterForceFunctor(getShockForceFunctor());
     chassis->GetSystem()->AddLink(m_shock[side]);
 
@@ -285,18 +288,13 @@ double ChSingleWishbone::GetTrack() {
 // -----------------------------------------------------------------------------
 // Return current suspension forces
 // -----------------------------------------------------------------------------
-ChSuspension::Force ChSingleWishbone::ReportSuspensionForce(VehicleSide side) const {
-    ChSuspension::Force force;
+std::vector<ChSuspension::ForceTSDA> ChSingleWishbone::ReportSuspensionForce(VehicleSide side) const {
+    std::vector<ChSuspension::ForceTSDA> forces(1);
 
-    force.spring_force = m_shock[side]->GetForce();
-    force.spring_length = m_shock[side]->GetLength();
-    force.spring_velocity = m_shock[side]->GetVelocity();
+    forces[0] = ChSuspension::ForceTSDA("Shock", m_shock[side]->GetForce(), m_shock[side]->GetLength(),
+                                        m_shock[side]->GetVelocity());
 
-    force.shock_force = force.spring_force;
-    force.shock_length = force.spring_length;
-    force.shock_velocity = force.spring_velocity;
-
-    return force;
+    return forces;
 }
 
 // -----------------------------------------------------------------------------
@@ -431,17 +429,9 @@ void ChSingleWishbone::AddVisualizationControlArm(std::shared_ptr<ChBody> arm,
     ChVector<> p_C = arm->TransformPointParentToLocal(pt_C);
     ChVector<> p_U = arm->TransformPointParentToLocal(pt_U);
 
-    auto cyl = chrono_types::make_shared<ChCylinderShape>();
-    cyl->GetCylinderGeometry().p1 = p_C;
-    cyl->GetCylinderGeometry().p2 = p_U;
-    cyl->GetCylinderGeometry().rad = radius;
-    arm->AddVisualShape(cyl);
-
-    auto cyl_B = chrono_types::make_shared<ChCylinderShape>();
-    cyl_B->GetCylinderGeometry().p1 = p_C + ChVector<>(radius, 0, 0);
-    cyl_B->GetCylinderGeometry().p2 = p_C - ChVector<>(radius, 0, 0);
-    cyl_B->GetCylinderGeometry().rad = radius;
-    arm->AddVisualShape(cyl_B);
+    ChVehicleGeometry::AddVisualizationCylinder(arm, p_C, p_U, radius);
+    ChVehicleGeometry::AddVisualizationCylinder(arm, p_C + ChVector<>(radius, 0, 0), p_C - ChVector<>(radius, 0, 0),
+                                                radius);
 }
 
 void ChSingleWishbone::AddVisualizationUpright(std::shared_ptr<ChBody> upright,
@@ -459,27 +449,15 @@ void ChSingleWishbone::AddVisualizationUpright(std::shared_ptr<ChBody> upright,
     ChVector<> p_T = upright->TransformPointParentToLocal(pt_T);  // connection to tierod
 
     if ((p_U - p_S).Length2() > threshold2) {
-        auto cyl = chrono_types::make_shared<ChCylinderShape>();
-        cyl->GetCylinderGeometry().p1 = p_U;
-        cyl->GetCylinderGeometry().p2 = p_S;
-        cyl->GetCylinderGeometry().rad = radius;
-        upright->AddVisualShape(cyl);
+        ChVehicleGeometry::AddVisualizationCylinder(upright, p_U, p_S, radius);
     }
 
     if ((p_U - p_A).Length2() > threshold2) {
-        auto cyl = chrono_types::make_shared<ChCylinderShape>();
-        cyl->GetCylinderGeometry().p1 = p_U;
-        cyl->GetCylinderGeometry().p2 = p_A;
-        cyl->GetCylinderGeometry().rad = radius;
-        upright->AddVisualShape(cyl);
+        ChVehicleGeometry::AddVisualizationCylinder(upright, p_U, p_A, radius);
     }
 
     if ((p_U - p_T).Length2() > threshold2) {
-        auto cyl = chrono_types::make_shared<ChCylinderShape>();
-        cyl->GetCylinderGeometry().p1 = p_U;
-        cyl->GetCylinderGeometry().p2 = p_T;
-        cyl->GetCylinderGeometry().rad = radius;
-        upright->AddVisualShape(cyl);
+        ChVehicleGeometry::AddVisualizationCylinder(upright, p_U, p_T, radius);
     }
 }
 
@@ -491,11 +469,7 @@ void ChSingleWishbone::AddVisualizationTierod(std::shared_ptr<ChBody> tierod,
     ChVector<> p_C = tierod->TransformPointParentToLocal(pt_C);
     ChVector<> p_U = tierod->TransformPointParentToLocal(pt_U);
 
-    auto cyl = chrono_types::make_shared<ChCylinderShape>();
-    cyl->GetCylinderGeometry().p1 = p_C;
-    cyl->GetCylinderGeometry().p2 = p_U;
-    cyl->GetCylinderGeometry().rad = radius;
-    tierod->AddVisualShape(cyl);
+    ChVehicleGeometry::AddVisualizationCylinder(tierod, p_C, p_U, radius);
 }
 
 // -----------------------------------------------------------------------------
@@ -514,12 +488,12 @@ void ChSingleWishbone::ExportComponentList(rapidjson::Document& jsonDocument) co
         bodies.push_back(m_tierod[0]);
         bodies.push_back(m_tierod[1]);
     }
-    ChPart::ExportBodyList(jsonDocument, bodies);
+    ExportBodyList(jsonDocument, bodies);
 
     std::vector<std::shared_ptr<ChShaft>> shafts;
     shafts.push_back(m_axle[0]);
     shafts.push_back(m_axle[1]);
-    ChPart::ExportShaftList(jsonDocument, shafts);
+    ExportShaftList(jsonDocument, shafts);
 
     std::vector<std::shared_ptr<ChLink>> joints;
     std::vector<std::shared_ptr<ChLoadBodyBody>> bushings;
@@ -546,13 +520,13 @@ void ChSingleWishbone::ExportComponentList(rapidjson::Document& jsonDocument) co
         joints.push_back(m_distTierod[0]);
         joints.push_back(m_distTierod[1]);
     }
-    ChPart::ExportJointList(jsonDocument, joints);
-    ChPart::ExportBodyLoadList(jsonDocument, bushings);
+    ExportJointList(jsonDocument, joints);
+    ExportBodyLoadList(jsonDocument, bushings);
 
     std::vector<std::shared_ptr<ChLinkTSDA>> springs;
     springs.push_back(m_shock[0]);
     springs.push_back(m_shock[1]);
-    ChPart::ExportLinSpringList(jsonDocument, springs);
+    ExportLinSpringList(jsonDocument, springs);
 }
 
 void ChSingleWishbone::Output(ChVehicleOutput& database) const {

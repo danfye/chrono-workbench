@@ -177,37 +177,38 @@ void ChShaftsGearboxAngled::ConstraintsFetch_react(double factor) {
 
 //////// FILE I/O
 
-void ChShaftsGearboxAngled::ArchiveOUT(ChArchiveOut& marchive) {
+void ChShaftsGearboxAngled::ArchiveOut(ChArchiveOut& marchive) {
     // version number
     marchive.VersionWrite<ChShaftsGearboxAngled>();
 
     // serialize parent class
-    ChPhysicsItem::ArchiveOUT(marchive);
+    ChPhysicsItem::ArchiveOut(marchive);
 
     // serialize all member data:
     marchive << CHNVP(t0);
     marchive << CHNVP(shaft_dir1);
     marchive << CHNVP(shaft_dir2);
-    // marchive << CHNVP(shaft1); //***TODO*** serialize with shared ptr
-    // marchive << CHNVP(shaft2); //***TODO*** serialize with shared ptr
-    // marchive << CHNVP(body); //***TODO*** serialize with shared ptr
+    marchive << CHNVP(shaft1); //***TODO*** serialize with shared ptr
+    marchive << CHNVP(shaft2); //***TODO*** serialize with shared ptr
+    marchive << CHNVP(body); //***TODO*** serialize with shared ptr
 }
 
 /// Method to allow de serialization of transient data from archives.
-void ChShaftsGearboxAngled::ArchiveIN(ChArchiveIn& marchive) {
+void ChShaftsGearboxAngled::ArchiveIn(ChArchiveIn& marchive) {
     // version number
     /*int version =*/ marchive.VersionRead<ChShaftsGearboxAngled>();
 
     // deserialize parent class:
-    ChPhysicsItem::ArchiveIN(marchive);
+    ChPhysicsItem::ArchiveIn(marchive);
 
     // deserialize all member data:
     marchive >> CHNVP(t0);
     marchive >> CHNVP(shaft_dir1);
     marchive >> CHNVP(shaft_dir2);
-    // marchive >> CHNVP(shaft1); //***TODO*** serialize with shared ptr
-    // marchive >> CHNVP(shaft2); //***TODO*** serialize with shared ptr
-    // marchive >> CHNVP(body); //***TODO*** serialize with shared ptr
+    marchive >> CHNVP(shaft1); //***TODO*** serialize with shared ptr
+    marchive >> CHNVP(shaft2); //***TODO*** serialize with shared ptr
+    marchive >> CHNVP(body); //***TODO*** serialize with shared ptr
+    constraint.SetVariables(&shaft1->Variables(), &shaft2->Variables(), &body->Variables());
 }
 
 }  // end namespace chrono

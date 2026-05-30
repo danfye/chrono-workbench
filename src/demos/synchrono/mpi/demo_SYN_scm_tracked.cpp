@@ -28,7 +28,7 @@
 
 #include "chrono_vehicle/ChConfigVehicle.h"
 #include "chrono_vehicle/ChVehicleModelData.h"
-#include "chrono_vehicle/terrain/SCMDeformableTerrain.h"
+#include "chrono_vehicle/terrain/SCMTerrain.h"
 #include "chrono_vehicle/driver/ChPathFollowerDriver.h"
 
 #include "chrono_models/vehicle/m113/M113.h"
@@ -42,7 +42,7 @@
 #include "chrono_synchrono/utils/SynLog.h"
 
 #ifdef CHRONO_IRRLICHT
-    #include "chrono_vehicle/tracked_vehicle/utils/ChTrackedVehicleVisualSystemIrrlicht.h"
+    #include "chrono_vehicle/tracked_vehicle/ChTrackedVehicleVisualSystemIrrlicht.h"
 #endif
 
 #ifdef CHRONO_SENSOR
@@ -142,7 +142,8 @@ int main(int argc, char* argv[]) {
     m113.SetTrackShoeType(TrackShoeType::SINGLE_PIN);
     m113.SetBrakeType(BrakeType::SIMPLE);
     m113.SetDrivelineType(DrivelineTypeTV::BDS);
-    m113.SetPowertrainType(PowertrainModelType::SHAFTS);
+    m113.SetEngineType(EngineModelType::SHAFTS);
+    m113.SetTransmissionType(TransmissionModelType::SHAFTS);
     m113.Initialize();
 
     m113.SetChassisVisualizationType(VisualizationType::MESH);
@@ -165,7 +166,7 @@ int main(int argc, char* argv[]) {
     // ----------------------
     // Terrain specific setup
     // ----------------------
-    auto terrain = chrono_types::make_shared<SCMDeformableTerrain>(m113.GetSystem());
+    auto terrain = chrono_types::make_shared<SCMTerrain>(m113.GetSystem());
 
     // Configure the SCM terrain
     if (bulldozing) {
@@ -178,7 +179,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Only relevant for Irrlicht visualization, gives some nice colors
-    terrain->SetPlotType(SCMDeformableTerrain::PLOT_SINKAGE, 0, 0.1);
+    terrain->SetPlotType(SCMTerrain::PLOT_SINKAGE, 0, 0.1);
     terrain->GetMesh()->SetWireframe(true);
 
     // The physics do not change when you add a moving patch, you just make it much easier for the SCM
@@ -303,7 +304,7 @@ int main(int argc, char* argv[]) {
     int step_number = 0;
 
     ChRealtimeStepTimer realtime_timer;
-    ChTimer<> timer;
+    ChTimer timer;
     timer.start();
 
     while (true) {
@@ -336,7 +337,7 @@ int main(int argc, char* argv[]) {
         m113.Synchronize(time, driver_inputs, shoe_forces_left, shoe_forces_right);
 #ifdef CHRONO_IRRLICHT
         if (app)
-            app->Synchronize("", driver_inputs);
+            app->Synchronize(time, driver_inputs);
 #endif
 
         // Advance simulation for one timestep for all modules

@@ -13,20 +13,21 @@
 #include "chrono_vehicle/utils/ChSteeringController.h"
 #include "chrono_vehicle/utils/ChAdaptiveSpeedController.h"
 #include "chrono_vehicle/driver/ChDataDriver.h"
+#include "chrono_vehicle/driver/ChInteractiveDriver.h"
 #include "chrono_vehicle/driver/ChPathFollowerDriver.h"
 #include "chrono_vehicle/driver/ChPathFollowerACCDriver.h"
 #include "chrono_vehicle/driver/ChExternalDriver.h"
-#include "chrono_vehicle/wheeled_vehicle/test_rig/ChDriverSTR.h"
-#include "chrono_vehicle/wheeled_vehicle/test_rig/ChDataDriverSTR.h"
+#include "chrono_vehicle/wheeled_vehicle/test_rig/ChSuspensionTestRigDriver.h"
+#include "chrono_vehicle/wheeled_vehicle/test_rig/ChSuspensionTestRigDataDriver.h"
 
 #ifdef SWIGPYTHON  // --------------------------------------------------------------------- PYTHON
 
 #ifdef CHRONO_IRRLICHT
-#include "chrono_vehicle/utils/ChVehicleVisualSystemIrrlicht.h"
-#include "chrono_vehicle/driver/ChIrrGuiDriver.h"
-#include "chrono_vehicle/wheeled_vehicle/test_rig/ChIrrGuiDriverSTR.h"
-#include "chrono_vehicle/wheeled_vehicle/utils/ChWheeledVehicleVisualSystemIrrlicht.h"
-#include "chrono_vehicle/tracked_vehicle/utils/ChTrackedVehicleVisualSystemIrrlicht.h"
+#include "chrono_vehicle/ChVehicleVisualSystemIrrlicht.h"
+#include "chrono_vehicle/driver/ChInteractiveDriverIRR.h"
+#include "chrono_vehicle/wheeled_vehicle/test_rig/ChSuspensionTestRigInteractiveDriverIRR.h"
+#include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicleVisualSystemIrrlicht.h"
+#include "chrono_vehicle/tracked_vehicle/ChTrackedVehicleVisualSystemIrrlicht.h"
 
 //using namespace chrono::irrlicht;
 //using namespace irr;
@@ -62,6 +63,7 @@
 
 %shared_ptr(chrono::vehicle::ChDriver)
 %shared_ptr(chrono::vehicle::ChDataDriver)
+%shared_ptr(chrono::vehicle::ChInteractiveDriver)
 %shared_ptr(chrono::vehicle::ChClosedLoopDriver)
 %shared_ptr(chrono::vehicle::ChPathFollowerDriver)
 %shared_ptr(chrono::vehicle::ChPathFollowerDriverXT)
@@ -73,13 +75,13 @@
 %shared_ptr(chrono::vehicle::ChExternalDriver::DataParserFunctor)
 %shared_ptr(chrono::vehicle::ChJSONWriter)
 %shared_ptr(chrono::vehicle::ChJSONReader)
-%shared_ptr(chrono::vehicle::ChDriverSTR)
-%shared_ptr(chrono::vehicle::ChDataDriverSTR)
+%shared_ptr(chrono::vehicle::ChSuspensionTestRigDriver)
+%shared_ptr(chrono::vehicle::ChSuspensionTestRigDataDriver)
 
 #ifdef SWIGPYTHON  // --------------------------------------------------------------------- PYTHON
 #ifdef CHRONO_IRRLICHT
-%shared_ptr(chrono::vehicle::ChIrrGuiDriver)
-%shared_ptr(chrono::vehicle::ChIrrGuiDriverSTR)
+%shared_ptr(chrono::vehicle::ChInteractiveDriverIRR)
+%shared_ptr(chrono::vehicle::ChSuspensionTestRigInteractiveDriverIRR)
 #endif
 #endif             // --------------------------------------------------------------------- PYTHON
 
@@ -98,11 +100,12 @@
 %include "../../../chrono/utils/ChUtilsChaseCamera.h"
 %include "../../../chrono_vehicle/ChDriver.h"
 %include "../../../chrono_vehicle/driver/ChDataDriver.h"
+%include "../../../chrono_vehicle/driver/ChInteractiveDriver.h"
 %include "../../../chrono_vehicle/driver/ChPathFollowerDriver.h"
 %include "../../../chrono_vehicle/driver/ChPathFollowerACCDriver.h"
 %include "../../../chrono_vehicle/driver/ChExternalDriver.h"
-%include "../../../chrono_vehicle/wheeled_vehicle/test_rig/ChDriverSTR.h"
-%include "../../../chrono_vehicle/wheeled_vehicle/test_rig/ChDataDriverSTR.h"
+%include "../../../chrono_vehicle/wheeled_vehicle/test_rig/ChSuspensionTestRigDriver.h"
+%include "../../../chrono_vehicle/wheeled_vehicle/test_rig/ChSuspensionTestRigDataDriver.h"
 %include "../../../chrono_vehicle/utils/ChSpeedController.h"
 %include "../../../chrono_vehicle/utils/ChSteeringController.h"
 %include "../../../chrono_vehicle/utils/ChAdaptiveSpeedController.h"
@@ -110,15 +113,18 @@
 #ifdef SWIGPYTHON  // --------------------------------------------------------------------- PYTHON
 
 #ifdef CHRONO_IRRLICHT
-%include "../../../chrono_vehicle/utils/ChVehicleVisualSystemIrrlicht.h"
-%include "../../../chrono_vehicle/driver/ChIrrGuiDriver.h"
-%include "../../../chrono_vehicle/wheeled_vehicle/test_rig/ChIrrGuiDriverSTR.h"
-%include "../../../chrono_vehicle/wheeled_vehicle/utils/ChWheeledVehicleVisualSystemIrrlicht.h"
-%include "../../../chrono_vehicle/tracked_vehicle/utils/ChTrackedVehicleVisualSystemIrrlicht.h"
+%include "../../../chrono_vehicle/ChVehicleVisualSystemIrrlicht.h"
+%include "../../../chrono_vehicle/driver/ChInteractiveDriverIRR.h"
+%include "../../../chrono_vehicle/wheeled_vehicle/test_rig/ChSuspensionTestRigInteractiveDriverIRR.h"
+%include "../../../chrono_vehicle/wheeled_vehicle/ChWheeledVehicleVisualSystemIrrlicht.h"
+%include "../../../chrono_vehicle/tracked_vehicle/ChTrackedVehicleVisualSystemIrrlicht.h"
 %include "irrTypes.h"
 %include "vector2d.h"
 %include "dimension2d.h"
 %template(dimension2du) irr::core::dimension2d<irr::u32>;
+
+%DefSharedPtrDynamicDowncast(chrono::vehicle,ChInteractiveDriver, ChInteractiveDriverIRR)
+
 #endif
 
 #endif             // --------------------------------------------------------------------- PYTHON

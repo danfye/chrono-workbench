@@ -24,18 +24,28 @@ namespace chrono {
 class ChApi ChRoundedCylinderShape : public ChVisualShape {
   public:
     ChRoundedCylinderShape();
+    ChRoundedCylinderShape(double radius, double height, double sphere_radius);
     ChRoundedCylinderShape(const geometry::ChRoundedCylinder& cyl);
 
     ~ChRoundedCylinderShape() {}
 
     // Access the rounded cylinder geometry.
-    geometry::ChRoundedCylinder& GetRoundedCylinderGeometry() { return groundedcyl; }
+    geometry::ChRoundedCylinder& GetGeometry() { return groundedcyl; }
+
+    /// Get the cylinder radius.
+    double GetRadius() const { return groundedcyl.GetRadius(); }
+
+    /// Get the cylinder height.
+    double GetHeight() const { return groundedcyl.GetHeight(); }
+
+    /// Get the radius of the sweeping sphere.
+    double GetSphereRadius() const { return groundedcyl.GetSphereRadius(); }
 
     /// Method to allow serialization of transient data to archives.
-    virtual void ArchiveOUT(ChArchiveOut& marchive) override;
+    virtual void ArchiveOut(ChArchiveOut& marchive) override;
 
     /// Method to allow de-serialization of transient data from archives.
-    virtual void ArchiveIN(ChArchiveIn& marchive) override;
+    virtual void ArchiveIn(ChArchiveIn& marchive) override;
 
   private:
     geometry::ChRoundedCylinder groundedcyl;

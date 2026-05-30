@@ -29,8 +29,6 @@ using namespace chrono;
 using namespace chrono::fea;
 using namespace chrono::irrlicht;
 
-using namespace irr;
-
 int main(int argc, char* argv[]) {
     GetLog() << "Copyright (c) 2017 projectchrono.org\nChrono version: " << CHRONO_VERSION << "\n\n";
 
@@ -229,7 +227,7 @@ int main(int argc, char* argv[]) {
     vis->AddLogo();
     vis->AddSkyBox();
     vis->AddTypicalLights();
-    vis->AddCamera(ChVector<>(1.2, 0.6, 0.3), ChVector<>(0.2, -0.2, 0.0));
+    vis->AddCamera(ChVector<>(1.7, 1.0, -1.7), ChVector<>(0.2, 0.2, 0.0));
     vis->AttachSystem(&sys);
 
     // Perform a dynamic time integration:

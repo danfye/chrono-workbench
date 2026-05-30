@@ -19,6 +19,8 @@
 #include "chrono/physics/ChBody.h"
 #include "chrono/assets/ChPointPointShape.h"
 
+#include "chrono_thirdparty/rapidjson/document.h"
+
 namespace chrono {
 
 /// Class for rotational spring-damper-actuator (RSDA) with the torque specified through a functor object.
@@ -55,6 +57,18 @@ class ChApi ChLinkRSDA : public ChLink {
     /// This number can be either positive or negative.
     void SetNumInitRevolutions(int n);
 
+    /// Get the value of the spring coefficient.
+    /// Meaningful only if no torque functor is provided.
+    double GetSpringCoefficient() const { return m_k; }
+
+    /// Get the value of the damping coefficient.
+    /// Meaningful only if no torque functor is provided.
+    double GetDampingCoefficient() const { return m_r; }
+
+    /// Get the constant acutation torque.
+    /// Meaningful only if no torque functor is provided.
+    double GetActuatorTorque() const { return m_t; }
+
     /// Class to be used as a callback interface for calculating the general spring-damper torque.
     /// A derived class must implement the virtual operator().
     class ChApi TorqueFunctor {
@@ -63,14 +77,25 @@ class ChApi ChLinkRSDA : public ChLink {
 
         /// Calculate and return the general spring-damper torque at the specified configuration.
         virtual double evaluate(double time,            ///< current time
+                                double rest_angle,      ///< undeformed angle
                                 double angle,           ///< relative angle of rotation
                                 double vel,             ///< relative angular speed
                                 const ChLinkRSDA& link  ///< associated RSDA link
                                 ) = 0;
+
+#ifndef SWIG
+        /// Optional reporting function to generate a JSON value with functor information.
+        virtual rapidjson::Value exportJSON(rapidjson::Document::AllocatorType& allocator) {
+            return rapidjson::Value();
+        }
+#endif
     };
 
     /// Specify the callback object for calculating the torque.
     void RegisterTorqueFunctor(std::shared_ptr<TorqueFunctor> functor) { m_torque_fun = functor; }
+
+    /// Return the functor object for calculating the torque (may be empty).
+    std::shared_ptr<TorqueFunctor> GetTorqueFunctor() const { return m_torque_fun; }
 
     /// Get the spring rest (free) angle.
     double GetRestAngle() const;
@@ -116,10 +141,10 @@ class ChApi ChLinkRSDA : public ChLink {
     );
 
     /// Method to allow serialization of transient data to archives.
-    virtual void ArchiveOUT(ChArchiveOut& marchive) override;
+    virtual void ArchiveOut(ChArchiveOut& marchive) override;
 
     /// Method to allow deserialization of transient data from archives.
-    virtual void ArchiveIN(ChArchiveIn& marchive) override;
+    virtual void ArchiveIn(ChArchiveIn& marchive) override;
 
   private:
     virtual void Update(double time, bool update_assets = true) override;

@@ -195,12 +195,12 @@ void ChShaftsPlanetary::ConstraintsFetch_react(double factor) {
 
 //////// FILE I/O
 
-void ChShaftsPlanetary::ArchiveOUT(ChArchiveOut& marchive) {
+void ChShaftsPlanetary::ArchiveOut(ChArchiveOut& marchive) {
     // version number
     marchive.VersionWrite<ChShaftsPlanetary>();
 
     // serialize parent class
-    ChPhysicsItem::ArchiveOUT(marchive);
+    ChPhysicsItem::ArchiveOut(marchive);
 
     // serialize all member data:
     marchive << CHNVP(r1);
@@ -210,18 +210,18 @@ void ChShaftsPlanetary::ArchiveOUT(ChArchiveOut& marchive) {
     marchive << CHNVP(phase1);
     marchive << CHNVP(phase2);
     marchive << CHNVP(phase3);
-    // marchive << CHNVP(shaft1); //***TODO*** serialize with shared ptr
-    // marchive << CHNVP(shaft2); //***TODO*** serialize with shared ptr
-    // marchive << CHNVP(shaft3); //***TODO*** serialize with shared ptr
+    marchive << CHNVP(shaft1); //***TODO*** serialize with shared ptr
+    marchive << CHNVP(shaft2); //***TODO*** serialize with shared ptr
+    marchive << CHNVP(shaft3); //***TODO*** serialize with shared ptr
 }
 
 /// Method to allow de serialization of transient data from archives.
-void ChShaftsPlanetary::ArchiveIN(ChArchiveIn& marchive) {
+void ChShaftsPlanetary::ArchiveIn(ChArchiveIn& marchive) {
     // version number
     /*int version =*/ marchive.VersionRead<ChShaftsPlanetary>();
 
     // deserialize parent class:
-    ChPhysicsItem::ArchiveIN(marchive);
+    ChPhysicsItem::ArchiveIn(marchive);
 
     // deserialize all member data:
     marchive >> CHNVP(r1);
@@ -231,9 +231,11 @@ void ChShaftsPlanetary::ArchiveIN(ChArchiveIn& marchive) {
     marchive >> CHNVP(phase1);
     marchive >> CHNVP(phase2);
     marchive >> CHNVP(phase3);
-    // marchive >> CHNVP(shaft1); //***TODO*** serialize with shared ptr
-    // marchive >> CHNVP(shaft2); //***TODO*** serialize with shared ptr
-    // marchive >> CHNVP(shaft3); //***TODO*** serialize with shared ptr
+    marchive >> CHNVP(shaft1); //***TODO*** serialize with shared ptr
+    marchive >> CHNVP(shaft2); //***TODO*** serialize with shared ptr
+    marchive >> CHNVP(shaft3); //***TODO*** serialize with shared ptr
+
+    constraint.SetVariables(&shaft1->Variables(), &shaft2->Variables(), &shaft3->Variables());
 }
 
 }  // end namespace chrono

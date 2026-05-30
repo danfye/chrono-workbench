@@ -37,13 +37,13 @@ namespace vehicle {
 /// Base class for a suspension subsystem.
 class CH_VEHICLE_API ChSuspension : public ChPart {
   public:
-    struct Force {
-        double spring_force;
-        double shock_force;
-        double spring_length;
-        double spring_velocity;
-        double shock_length;
-        double shock_velocity;
+    struct ForceTSDA {
+        std::string name;
+        double force;
+        double length;
+        double velocity;
+        ForceTSDA() : name(""), force(0), length(0), velocity(0) {}
+        ForceTSDA(const std::string& n, double f, double l, double v) : name(n), force(f), length(l), velocity(v) {}
     };
 
     virtual ~ChSuspension();
@@ -113,7 +113,7 @@ class CH_VEHICLE_API ChSuspension : public ChPart {
         const ChVector<>& location,                ///< [in] location relative to the chassis frame
         double left_ang_vel = 0,                   ///< [in] initial angular velocity of left wheel
         double right_ang_vel = 0                   ///< [in] initial angular velocity of right wheel
-        ) = 0;
+    );
 
     /// Return the radius of the spindle body (visualization only).
     virtual double getSpindleRadius() const = 0;
@@ -139,9 +139,8 @@ class CH_VEHICLE_API ChSuspension : public ChPart {
     /// Get the wheel track for the suspension subsystem.
     virtual double GetTrack() = 0;
 
-    /// Return current suspension forces (spring and shock) on the specified side.
-    /// Different derived types (suspension templates) may load different quantities in the output struct.
-    virtual Force ReportSuspensionForce(VehicleSide side) const = 0;
+    /// Return current suspension TSDA force information on the specified side.
+    virtual std::vector<ForceTSDA> ReportSuspensionForce(VehicleSide side) const = 0;
 
     /// Log current constraint violations.
     virtual void LogConstraintViolations(VehicleSide side) {}
@@ -160,7 +159,7 @@ class CH_VEHICLE_API ChSuspension : public ChPart {
     std::shared_ptr<ChLinkLockRevolute> m_revolute[2];   ///< handles to spindle revolute joints
 
   private:
-    std::shared_ptr<ChCylinderShape> m_spindle_shapes[2];
+    std::shared_ptr<ChVisualShape> m_spindle_shapes[2];
 
     void AddVisualizationSpindle(VehicleSide side, double radius, double width);
 };

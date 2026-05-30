@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "chrono/assets/ChColor.h"
+#include "chrono/assets/ChVisualShape.h"
 #include "chrono/utils/ChUtilsCreators.h"
 
 #include "chrono_vehicle/ChApiVehicle.h"
@@ -45,7 +46,7 @@ class CH_VEHICLE_API ChVehicleGeometry {
     /// Box shape for visualization and/or collision.
     struct CH_VEHICLE_API BoxShape {
         BoxShape(const ChVector<>& pos, const ChQuaternion<>& rot, const ChVector<>& dims, int matID = -1);
-        ChVector<> m_pos;      ///< position relative to body
+        ChVector<> m_pos;      ///< center position relative to body
         ChQuaternion<> m_rot;  ///< orientation relative to body
         ChVector<> m_dims;     ///< box dimensions
         int m_matID;           ///< index in contact material list
@@ -54,15 +55,16 @@ class CH_VEHICLE_API ChVehicleGeometry {
     /// Sphere shape for visualization and/or collision.
     struct CH_VEHICLE_API SphereShape {
         SphereShape(const ChVector<>& pos, double radius, int matID = -1);
-        ChVector<> m_pos;  ///< position relative to body
+        ChVector<> m_pos;  ///< center position relative to body
         double m_radius;   ///< sphere radius
         int m_matID;       ///< index in contact material list
     };
 
     /// Cylinder shape for visualization and/or collision.
     struct CH_VEHICLE_API CylinderShape {
+        CylinderShape(const ChVector<>& pos, const ChVector<>& axis, double radius, double length, int matID = -1);
         CylinderShape(const ChVector<>& pos, const ChQuaternion<>& rot, double radius, double length, int matID = -1);
-        ChVector<> m_pos;      ///< position relative to body
+        ChVector<> m_pos;      ///< center position relative to body
         ChQuaternion<> m_rot;  ///< orientation relative to body
         double m_radius;       ///< cylinder radius
         double m_length;       ///< cylinder length
@@ -135,8 +137,44 @@ class CH_VEHICLE_API ChVehicleGeometry {
     /// Create collision shapes for the specified body.
     void CreateCollisionShapes(std::shared_ptr<ChBody> body, int collision_family, ChContactMethod contact_method);
 
+    /// Utility function for adding a cylinder visualization shape defined by the end points and a radius.
+    /// This function adds the visualization shape to the body's visual model and returns the shape.
+    static std::shared_ptr<ChVisualShape> AddVisualizationCylinder(std::shared_ptr<ChBody> body,
+                                                                   const ChVector<>& p1,
+                                                                   const ChVector<>& p2,
+                                                                   double radius,
+                                                                   ChVisualMaterialSharedPtr mat = nullptr);
+
     /// Calculate axis-aligned bounding box of all collision shapes.
     AABB CalculateAABB();
+};
+
+/// Utility class defining visualization geometry for a vehicle TSDA.
+/// Holds vectors of segment and spring visualization shapes.
+class CH_VEHICLE_API ChTSDAGeometry {
+  public:
+    ChTSDAGeometry();
+
+    /// Segment shape for TSDA visualization.
+    struct CH_VEHICLE_API SegmentShape {
+        SegmentShape() {}
+    };
+
+    /// Spring shape for TSDA visualization.
+    struct CH_VEHICLE_API SpringShape {
+        SpringShape(double radius, int resolution, double turns);
+        double m_radius;
+        double m_turns;
+        int m_resolution;
+    };
+
+    std::shared_ptr<SegmentShape> m_vis_segment;  ///< visualization segment
+    std::shared_ptr<SpringShape> m_vis_spring;    ///< visualization spring
+    bool m_has_color;                             ///< true if visualization color was provided
+    ChColor m_color;                              ///< visualization color
+
+    /// Create visualization assets for the specified TSDA.
+    void CreateVisualizationAssets(std::shared_ptr<ChLinkTSDA> tsda, VisualizationType vis);
 };
 
 /// @} vehicle

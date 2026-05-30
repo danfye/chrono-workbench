@@ -87,8 +87,8 @@ class CH_OPENGL_API ChVisualSystemOpenGL : virtual public ChVisualSystem {
     /// Set render mode for solid objects (default: SOLID)
     void SetRenderMode(RenderMode mode);
 
-    /// Set render mode for particle systems (default: POINTS)
-    void SetParticleRenderMode(float radius, RenderMode mode);
+    /// Set render mode for particle systems (default: POINTS) and size.
+    void SetParticleRenderMode(RenderMode mode, float radius);
 
     /// Attach a Chrono system to the run-time visualization system.
     /// ChVisualSystemOpenGL allows simultaneous rendering of multiple Chrono systems.
@@ -101,18 +101,30 @@ class CH_OPENGL_API ChVisualSystemOpenGL : virtual public ChVisualSystem {
     /// Enable/disable stats overlay display (default: true).
     void EnableStats(bool state) { render_stats = state; }
 
+    /// Enable/disable OpenGL information terminal output during initialization (default: true).
+    void SetVerbose(bool verbose) { m_verbose = verbose; }
+
     /// Initialize the visualization system.
     /// This creates the Irrlicht device using the current values for the optional device parameters.
     virtual void Initialize();
 
-    /// Set camera position and look-at point.
-    /// The camera rotation/pan is controlled by mouse left and right buttons, the zoom is controlled by mouse wheel or
-    /// rmb+lmb+mouse, the position can be changed also with keyboard up/down/left/right arrows, the height can be
-    /// changed with keyboard 'PgUp' and 'PgDn' keys. Optional parameters are position and target.
-    void SetCameraPosition(const ChVector<>& pos, ChVector<> targ = VNULL);
+    /// Add a camera to the 3d scene.
+    virtual int AddCamera(const ChVector<>& pos, ChVector<> targ = VNULL) override;
+
+    /// Set the location of the specified camera.
+    virtual void SetCameraPosition(int id, const ChVector<>& pos) override;
+
+    /// Set the target (look-at) point of the specified camera.
+    virtual void SetCameraTarget(int id, const ChVector<>& target) override;
+
+    /// Set the location of the current (active) camera.
+    virtual void SetCameraPosition(const ChVector<>& pos) override;
+
+    /// Set the target (look-at) point of the current (active) camera.
+    virtual void SetCameraTarget(const ChVector<>& target) override;
 
     /// Attach a custom event receiver to the application.
-    void AddUserEventReceiver(ChOpenGLEventCB* receiver) { user_receivers.push_back(receiver); }
+    void AddUserEventReceiver(std::shared_ptr<ChOpenGLEventCB> receiver) { user_receivers.push_back(receiver); }
 
     /// Attach a custom particle rendering selector.
     void AttachParticleSelector(std::shared_ptr<ChOpenGLParticleCB> selector) { particle_selector = selector; }
@@ -129,20 +141,20 @@ class CH_OPENGL_API ChVisualSystemOpenGL : virtual public ChVisualSystem {
 
     /// Run the Irrlicht device.
     /// Returns `false` if the device wants to be deleted.
-    bool Run();
+    virtual bool Run() override;
 
-    /// Clean the canvas at the beginning of each animation frame.
-    virtual void BeginScene(bool backBuffer = true, bool zBuffer = true, ChColor color = ChColor(0, 0, 0));
+    /// Perform any necessary operations at the beginning of each rendering frame.
+    virtual void BeginScene() override {}
 
     /// Draw all 3D shapes and GUI elements at the current frame.
     /// This function is typically called inside a loop such as
     /// <pre>
     ///    while(vis->Run()) {...}
     /// </pre>
-    virtual void Render();
+    virtual void Render() override;
 
     /// End the scene draw at the end of each animation frame.
-    virtual void EndScene();
+    virtual void EndScene() override {}
 
     /// Create a snapshot of the last rendered frame and save it to the provided file.
     /// The file extension determines the image format.
@@ -162,7 +174,7 @@ class CH_OPENGL_API ChVisualSystemOpenGL : virtual public ChVisualSystem {
     virtual void OnClear(ChSystem* sys) override;
 
     /// Provide the version of the OpenGL context along with driver information.
-    static void GLFWGetVersion(GLFWwindow* main_window);
+    static void GLFWGetVersion(GLFWwindow* main_window, bool verbose);
 
     /// GLFW error callback, returns error string.
     static void CallbackError(int error, const char* description);
@@ -201,8 +213,9 @@ class CH_OPENGL_API ChVisualSystemOpenGL : virtual public ChVisualSystem {
     float m_camera_near;       ///< camera near clip distance
     float m_camera_far;        ///< camera far clip distance
 
+    bool m_verbose;  ///< OpenGL terminal initialization output
     bool render_stats;
-    std::vector<ChOpenGLEventCB*> user_receivers;
+    std::vector<std::shared_ptr<ChOpenGLEventCB>> user_receivers;
     std::shared_ptr<ChOpenGLParticleCB> particle_selector;
 
 #ifdef CHRONO_MULTICORE

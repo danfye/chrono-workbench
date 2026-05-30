@@ -23,6 +23,8 @@ namespace chrono {
 
 // Register into the object factory, to enable run-time dynamic creation and persistence
 CH_FACTORY_REGISTER(ChMarker)
+CH_UPCASTING(ChMarker, ChObj)
+CH_UPCASTING_SANITIZED(ChMarker, ChFrameMoving<double>, ChMarker_ChFrameMoving_double)
 
 ChMarker::ChMarker()
     : Body(NULL),
@@ -299,14 +301,14 @@ void ChMarker::UpdatedExternalTime(double prevtime, double mtime) {
 
 //  FILE I/O
 
-void ChMarker::ArchiveOUT(ChArchiveOut& marchive) {
+void ChMarker::ArchiveOut(ChArchiveOut& marchive) {
     // version number
     marchive.VersionWrite<ChMarker>();
 
     // serialize parent class
-    ChObj::ArchiveOUT(marchive);
+    ChObj::ArchiveOut(marchive);
     // serialize parent class
-    ChFrameMoving<double>::ArchiveOUT(marchive);
+    ChFrameMoving<double>::ArchiveOut(marchive);
 
     // serialize all member data:
     eChMarkerMotion_mapper mmapper;
@@ -316,17 +318,18 @@ void ChMarker::ArchiveOUT(ChArchiveOut& marchive) {
     marchive << CHNVP(motion_Z);
     marchive << CHNVP(motion_ang);
     marchive << CHNVP(motion_axis);
+    marchive << CHNVP(Body);
 }
 
 /// Method to allow de serialization of transient data from archives.
-void ChMarker::ArchiveIN(ChArchiveIn& marchive) {
+void ChMarker::ArchiveIn(ChArchiveIn& marchive) {
     // version number
     /*int version =*/ marchive.VersionRead<ChMarker>();
 
     // deserialize parent class
-    ChObj::ArchiveIN(marchive);
+    ChObj::ArchiveIn(marchive);
     // deserialize parent class
-    ChFrameMoving<double>::ArchiveIN(marchive);
+    ChFrameMoving<double>::ArchiveIn(marchive);
 
     // stream in all member data:
     eChMarkerMotion_mapper mmapper;
@@ -336,6 +339,26 @@ void ChMarker::ArchiveIN(ChArchiveIn& marchive) {
     marchive >> CHNVP(motion_Z);
     marchive >> CHNVP(motion_ang);
     marchive >> CHNVP(motion_axis);
+    marchive >> CHNVP(Body);
+
+
+    // INITIALIZATION-BY-METHODS
+    if (marchive.CanTolerateMissingTokens()){
+        bool temp_tolerate_missing_tokens = marchive.GetTolerateMissingTokens();
+        marchive.TryTolerateMissingTokens(true);
+
+        ChVector<> _c_Impose_Abs_Coord__ChCoordsys__ChVector;
+        ChQuaternion<> _c_Impose_Abs_Coord__ChCoordsys__ChQuaternion;
+        if (marchive.in(CHNVP(_c_Impose_Abs_Coord__ChCoordsys__ChVector)) &&
+            marchive.in(CHNVP(_c_Impose_Abs_Coord__ChCoordsys__ChQuaternion)))
+            this->Impose_Abs_Coord(ChCoordsys<>(_c_Impose_Abs_Coord__ChCoordsys__ChVector, _c_Impose_Abs_Coord__ChCoordsys__ChQuaternion));
+
+        marchive.TryTolerateMissingTokens(temp_tolerate_missing_tokens);
+    }
+
+    UpdateState(); // updates the ChMarker::abs_frame first
+    Impose_Abs_Coord(this->GetAbsCoord()); // from ChMarker::abs_frame update ChMarker::rest_coord and ChFrame::coord
+
 }
 
 }  // end namespace chrono

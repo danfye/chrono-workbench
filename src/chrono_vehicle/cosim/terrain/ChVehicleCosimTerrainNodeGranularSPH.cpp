@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <cmath>
 #include <set>
+#include <limits>
 
 #include "chrono/utils/ChUtilsCreators.h"
 #include "chrono/utils/ChUtilsGenerators.h"
@@ -33,6 +34,13 @@
 #include "chrono_fsi/utils/ChUtilsPrintSph.cuh"
 
 #include "chrono_vehicle/cosim/terrain/ChVehicleCosimTerrainNodeGranularSPH.h"
+
+#ifdef CHRONO_OPENGL
+    #include "chrono_fsi/visualization/ChFsiVisualizationGL.h"
+#endif
+#ifdef CHRONO_VSG
+    #include "chrono_fsi/visualization/ChFsiVisualizationVSG.h"
+#endif
 
 using std::cout;
 using std::endl;
@@ -52,7 +60,11 @@ static const int body_id_obstacles = 100000;
 // - create the Chrono FSI system
 // -----------------------------------------------------------------------------
 ChVehicleCosimTerrainNodeGranularSPH::ChVehicleCosimTerrainNodeGranularSPH(double length, double width)
-    : ChVehicleCosimTerrainNodeChrono(Type::GRANULAR_SPH, length, width, ChContactMethod::SMC), m_depth(0) {
+    : ChVehicleCosimTerrainNodeChrono(Type::GRANULAR_SPH, length, width, ChContactMethod::SMC),
+      m_depth(0),
+      m_aabb_min(std::numeric_limits<double>::max()),
+      m_aabb_max(-std::numeric_limits<double>::max())
+{
     // Default granular material properties
     m_radius_g = 0.01;
     m_rho_g = 2000;
@@ -66,11 +78,6 @@ ChVehicleCosimTerrainNodeGranularSPH::ChVehicleCosimTerrainNodeGranularSPH(doubl
 
     // Set number of threads
     m_system->SetNumThreads(1);
-
-    // Create OpenGL visualization system
-#ifdef CHRONO_OPENGL
-    m_vsys = new opengl::ChVisualSystemOpenGL;
-#endif
 }
 
 ChVehicleCosimTerrainNodeGranularSPH::ChVehicleCosimTerrainNodeGranularSPH(const std::string& specfile)
@@ -87,19 +94,11 @@ ChVehicleCosimTerrainNodeGranularSPH::ChVehicleCosimTerrainNodeGranularSPH(const
 
     // Read SPH granular terrain parameters from provided specfile
     SetFromSpecfile(specfile);
-
-    // Create OpenGL visualization system
-#ifdef CHRONO_OPENGL
-    m_vsys = new opengl::ChVisualSystemOpenGL;
-#endif
 }
 
 ChVehicleCosimTerrainNodeGranularSPH::~ChVehicleCosimTerrainNodeGranularSPH() {
     delete m_systemFSI;
     delete m_system;
-#ifdef CHRONO_OPENGL
-    delete m_vsys;
-#endif
 }
 
 // -----------------------------------------------------------------------------
@@ -109,10 +108,8 @@ void ChVehicleCosimTerrainNodeGranularSPH::SetFromSpecfile(const std::string& sp
     Document d;
     ReadSpecfile(specfile, d);
 
-    double length = d["Patch dimensions"]["Length"].GetDouble();
-    double width = d["Patch dimensions"]["Width"].GetDouble();
-    m_hdimX = length / 2;
-    m_hdimY = width / 2;
+    m_dimX = d["Patch dimensions"]["Length"].GetDouble();
+    m_dimY = d["Patch dimensions"]["Width"].GetDouble();
 
     m_radius_g = d["Granular material"]["Radius"].GetDouble();
     m_rho_g = d["Granular material"]["Density"].GetDouble();
@@ -157,8 +154,8 @@ void ChVehicleCosimTerrainNodeGranularSPH::Construct() {
     m_systemFSI->SetKernelLength(initSpace0);
 
     // Set up the periodic boundary condition (if not, set relative larger values)
-    ChVector<> cMin(-2 * m_hdimX, -2 * m_hdimY, -10 * m_depth - 10 * initSpace0);
-    ChVector<> cMax(+2 * m_hdimX, +2 * m_hdimY, +20 * m_depth + 10 * initSpace0);
+    ChVector<> cMin(-m_dimX, -m_dimY, -10 * m_depth - 10 * initSpace0);
+    ChVector<> cMax(+m_dimX, +m_dimY, +20 * m_depth + 10 * initSpace0);
     m_systemFSI->SetBoundaries(cMin, cMax);
 
     // Set the time integration type and the linear solver type (only for ISPH)
@@ -169,7 +166,7 @@ void ChVehicleCosimTerrainNodeGranularSPH::Construct() {
 
     // Create fluid region and discretize with SPH particles
     ChVector<> boxCenter(0.0, 0.0, m_depth / 2);
-    ChVector<> boxHalfDim(m_hdimX, m_hdimY, m_depth / 2);
+    ChVector<> boxHalfDim(m_dimX / 2, m_dimY / 2, m_depth / 2);
 
     // Use a chrono sampler to create a bucket of points
     utils::GridSampler<> sampler(initSpace0);
@@ -184,6 +181,8 @@ void ChVehicleCosimTerrainNodeGranularSPH::Construct() {
             m_systemFSI->GetDensity() + pre_ini / (m_systemFSI->GetSoundSpeed() * m_systemFSI->GetSoundSpeed());
         m_systemFSI->AddSPHParticle(points[i], rho_ini, 0.0, m_systemFSI->GetViscosity(), ChVector<>(1e-10),
                                     ChVector<>(-pre_ini), ChVector<>(1e-10));
+        m_aabb_min = Vmin(m_aabb_min, points[i]);
+        m_aabb_max = Vmax(m_aabb_max, points[i]);
     }
 
     // Create a body for the fluid container body
@@ -195,8 +194,10 @@ void ChVehicleCosimTerrainNodeGranularSPH::Construct() {
     container->SetCollide(false);
 
     // Create the geometry of the boundaries
-    m_systemFSI->AddContainerBCE(container, ChFrame<>(), ChVector<>(2 * m_hdimX, 2 * m_hdimY, 1.25 * m_depth),
-                                 ChVector<int>(2, 2, -1));
+    m_systemFSI->AddBoxContainerBCE(container,                                                 //
+                                    ChFrame<>(ChVector<>(0, 0, (1.25 / 2) * m_depth), QUNIT),  //
+                                    ChVector<>(m_dimX, m_dimY, 1.25 * m_depth),                //
+                                    ChVector<int>(2, 2, -1));
 
     // Add all rigid obstacles
     int id = body_id_obstacles;
@@ -241,32 +242,13 @@ void ChVehicleCosimTerrainNodeGranularSPH::Construct() {
         m_systemFSI->AddPointsBCE(body, point_cloud, ChFrame<>(), true);
     }
 
-#ifdef CHRONO_OPENGL
-    // Add visualization asset for the container
-    auto box = chrono_types::make_shared<ChBoxShape>();
-    box->GetBoxGeometry().Size = ChVector<>(m_hdimX, m_hdimY, m_depth / 2);
-    container->AddVisualShape(box, ChFrame<>(ChVector<>(0, 0, m_depth / 2)));
-
-    // Create the visualization window
-    if (m_render) {
-        m_vsys->AttachSystem(m_system);
-        m_vsys->SetWindowTitle("Terrain Node (GranularSPH)");
-        m_vsys->SetWindowSize(1280, 720);
-        m_vsys->SetRenderMode(opengl::WIREFRAME);
-        m_vsys->Initialize();
-        m_vsys->SetCameraPosition(ChVector<>(0, -6, 0), ChVector<>(0, 0, 0));
-        m_vsys->SetCameraProperties(0.05f);
-        m_vsys->SetCameraVertical(CameraVerticalDir::Z);
-    }
-#endif
-
     // Write file with terrain node settings
     std::ofstream outf;
     outf.open(m_node_out_dir + "/settings.info", std::ios::out);
     outf << "System settings" << endl;
     outf << "   Integration step size = " << m_step_size << endl;
     outf << "Patch dimensions" << endl;
-    outf << "   X = " << 2 * m_hdimX << "  Y = " << 2 * m_hdimY << endl;
+    outf << "   X = " << m_dimX << "  Y = " << m_dimY << endl;
     outf << "   depth = " << m_depth << endl;
 }
 
@@ -325,6 +307,30 @@ void ChVehicleCosimTerrainNodeGranularSPH::CreateRigidProxy(unsigned int i) {
 void ChVehicleCosimTerrainNodeGranularSPH::OnInitialize(unsigned int num_objects) {
     ChVehicleCosimTerrainNodeChrono::OnInitialize(num_objects);
     m_systemFSI->Initialize();
+
+    // Initialize run-time visualization
+    if (m_renderRT) {
+#if defined(CHRONO_VSG)
+        m_vsys = chrono_types::make_shared<ChFsiVisualizationVSG>(m_systemFSI, false);
+#elif defined(CHRONO_OPENGL)
+        m_vsys = chrono_types::make_shared<ChFsiVisualizationGL>(m_systemFSI, false);
+#endif
+        if (m_vsys) {
+            m_vsys->SetTitle("Terrain Node (GranularSPH)");
+            m_vsys->SetSize(1280, 720);
+            m_vsys->AddCamera(m_cam_pos, ChVector<>(0, 0, 0));
+            m_vsys->SetCameraMoveScale(0.2f);
+            m_vsys->EnableFluidMarkers(true);
+            m_vsys->EnableBoundaryMarkers(false);
+            m_vsys->EnableRigidBodyMarkers(true);
+            m_vsys->SetRenderMode(ChFsiVisualization::RenderMode::SOLID);
+            m_vsys->SetParticleRenderMode(ChFsiVisualization::RenderMode::SOLID);
+            m_vsys->SetSPHColorCallback(chrono_types::make_shared<HeightColorCallback>(ChColor(0.10f, 0.40f, 0.65f),
+                                                                                       m_aabb_min.z(), m_aabb_max.z()));
+            m_vsys->AttachSystem(m_system);
+            m_vsys->Initialize();
+        }
+    }
 }
 
 // Set state of proxy rigid body.
@@ -349,10 +355,7 @@ void ChVehicleCosimTerrainNodeGranularSPH::GetForceRigidProxy(unsigned int i, Te
 
 // -----------------------------------------------------------------------------
 
-void ChVehicleCosimTerrainNodeGranularSPH::CreateMeshProxy(unsigned int i) {
-
-
-}
+void ChVehicleCosimTerrainNodeGranularSPH::CreateMeshProxy(unsigned int i) {}
 
 void ChVehicleCosimTerrainNodeGranularSPH::UpdateMeshProxy(unsigned int i, MeshState& mesh_state) {}
 
@@ -369,18 +372,18 @@ void ChVehicleCosimTerrainNodeGranularSPH::OnAdvance(double step_size) {
     }
 }
 
-void ChVehicleCosimTerrainNodeGranularSPH::Render(double time) {
-#ifdef CHRONO_OPENGL
-    if (m_vsys->Run()) {
-        const auto& proxies = m_proxies[0];  // proxies for first object
-        ChVector<> cam_point = proxies[0].m_body->GetPos();
-        ChVector<> cam_loc = cam_point + ChVector<>(0, -3, 0.6);
-        m_vsys->SetCameraPosition(cam_loc, cam_point);
-        m_vsys->Render();
-    } else {
+void ChVehicleCosimTerrainNodeGranularSPH::OnRender() {
+    if (!m_vsys)
+        return;
+
+    const auto& proxies = m_proxies[0];  // proxies for first object
+    ChVector<> cam_point = proxies[0].m_body->GetPos();
+    m_vsys->UpdateCamera(m_cam_pos, cam_point);
+
+    auto ok = m_vsys->Render();
+
+    if (!ok)
         MPI_Abort(MPI_COMM_WORLD, 1);
-    }
-#endif
 }
 
 // -----------------------------------------------------------------------------

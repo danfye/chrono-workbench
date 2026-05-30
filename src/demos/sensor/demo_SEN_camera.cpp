@@ -26,7 +26,7 @@
 #include "chrono/utils/ChUtilsCreators.h"
 #include "chrono_thirdparty/filesystem/path.h"
 
-#include "chrono/assets/ChObjFileShape.h"
+#include "chrono/assets/ChModelFileShape.h"
 
 #include "chrono_sensor/sensors/ChSegmentationCamera.h"
 #include "chrono_sensor/ChSensorManager.h"
@@ -199,7 +199,7 @@ int main(int argc, char* argv[]) {
     vis_mat4->SetClassID(30000);
     vis_mat4->SetInstanceID(1000);
 
-    auto cyl_body = chrono_types::make_shared<ChBodyEasyCylinder>(.25, 1, 1000, true, false);
+    auto cyl_body = chrono_types::make_shared<ChBodyEasyCylinder>(geometry::ChAxis::Y, .25, 1, 1000, true, false);
     cyl_body->SetPos({0, 2, 0});
     cyl_body->SetBodyFixed(true);
     sys.Add(cyl_body);

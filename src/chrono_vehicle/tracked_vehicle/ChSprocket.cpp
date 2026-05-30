@@ -91,6 +91,9 @@ void ChSprocket::Initialize(std::shared_ptr<ChChassis> chassis, const ChVector<>
     // Set user-defined custom collision callback class for sprocket-shoes contact.
     m_callback = GetCollisionCallback(track);
     chassis->GetSystem()->RegisterCustomCollisionCallback(m_callback);
+
+    // Mark as initialized
+    m_initialized = true;
 }
 
 void ChSprocket::InitializeInertiaProperties() {
@@ -311,15 +314,15 @@ void ChSprocket::ExportComponentList(rapidjson::Document& jsonDocument) const {
 
     std::vector<std::shared_ptr<ChBody>> bodies;
     bodies.push_back(m_gear);
-    ChPart::ExportBodyList(jsonDocument, bodies);
+    ExportBodyList(jsonDocument, bodies);
 
     std::vector<std::shared_ptr<ChShaft>> shafts;
     shafts.push_back(m_axle);
-    ChPart::ExportShaftList(jsonDocument, shafts);
+    ExportShaftList(jsonDocument, shafts);
 
     std::vector<std::shared_ptr<ChLink>> joints;
     joints.push_back(m_revolute);
-    ChPart::ExportJointList(jsonDocument, joints);
+    ExportJointList(jsonDocument, joints);
 }
 
 void ChSprocket::Output(ChVehicleOutput& database) const {

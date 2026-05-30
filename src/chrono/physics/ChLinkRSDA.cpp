@@ -195,7 +195,7 @@ void ChLinkRSDA::Update(double time, bool update_assets) {
     // Calculate torque along RSDA axis
     double angle = CH_C_2PI * m_turns + m_angle;
     if (m_torque_fun) {
-        m_torque = m_torque_fun->evaluate(time, m_angle, m_angle_dt, *this);
+        m_torque = m_torque_fun->evaluate(time, m_rest_angle, m_angle, m_angle_dt, *this);
     } else {
         m_torque = m_t - m_k * (angle - m_rest_angle) - m_r * m_angle_dt;
     }
@@ -232,12 +232,12 @@ void ChLinkRSDA::ConstraintsFbLoadForces(double factor) {
     Body2->Variables().Get_fb().segment(3, 3) += factor * Body2->TransformDirectionParentToLocal(torque).eigen();
 }
 
-void ChLinkRSDA::ArchiveOUT(ChArchiveOut& marchive) {
+void ChLinkRSDA::ArchiveOut(ChArchiveOut& marchive) {
     // version number
     marchive.VersionWrite<ChLinkRSDA>();
 
     // serialize parent class
-    ChLink::ArchiveOUT(marchive);
+    ChLink::ArchiveOut(marchive);
 
     // serialize all member data:
     marchive << CHNVP(m_csys1);
@@ -245,12 +245,12 @@ void ChLinkRSDA::ArchiveOUT(ChArchiveOut& marchive) {
 }
 
 /// Method to allow de serialization of transient data from archives.
-void ChLinkRSDA::ArchiveIN(ChArchiveIn& marchive) {
+void ChLinkRSDA::ArchiveIn(ChArchiveIn& marchive) {
     // version number
     /*int version =*/marchive.VersionRead<ChLinkRSDA>();
 
     // deserialize parent class
-    ChLink::ArchiveIN(marchive);
+    ChLink::ArchiveIn(marchive);
 
     // deserialize all member data:
     marchive >> CHNVP(m_csys1);

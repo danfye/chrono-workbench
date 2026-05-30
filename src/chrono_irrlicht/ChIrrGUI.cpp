@@ -56,6 +56,9 @@ bool ChIrrEventReceiver::OnEvent(const irr::SEvent& event) {
             case irr::KEY_KEY_U:
                 m_gui->show_explorer = !m_gui->show_explorer;
                 return true;
+            case irr::KEY_SPACE:
+                m_gui->m_vis->SetUtilityFlag(!m_gui->m_vis->GetUtilityFlag());
+                return true;
             case irr::KEY_F8: {
                 GetLog() << "Saving system in JSON format to dump.json file \n";
                 ChStreamOutAsciiFile mfileo("dump.json");
@@ -99,6 +102,20 @@ bool ChIrrEventReceiver::OnEvent(const irr::SEvent& event) {
                 return true;
             case irr::KEY_ESCAPE:
                 m_gui->GetDevice()->closeDevice();
+                return true;
+            case irr::KEY_F12:
+#ifdef CHRONO_POSTPROCESS
+                if (m_gui->blender_save == false) {
+                    GetLog() << "Start saving Blender postprocessing scripts...\n";
+                    m_gui->SetBlenderSave(true);
+                } else {
+                    m_gui->SetBlenderSave(false);
+                    GetLog() << "Stop saving Blender postprocessing scripts.\n";
+                }
+#else
+                GetLog() << "Saving Blender3D files not supported. Rebuild the solution with ENABLE_MODULE_POSTPROCESSING "
+                            "in CMake. \n";
+#endif
                 return true;
             default:
                 break;
@@ -176,6 +193,7 @@ ChIrrGUI::ChIrrGUI()
     : m_vis(nullptr),
       m_device(nullptr),
       m_system(nullptr),
+      m_receiver(nullptr),
       initialized(false),
       show_explorer(false),
       show_infos(false),
@@ -189,7 +207,17 @@ ChIrrGUI::ChIrrGUI()
       modal_current_freq(0),
       modal_current_dampingfactor(0),
       symbolscale(1),
-      camera_auto_rotate_speed(0) {}
+      camera_auto_rotate_speed(0) {
+#ifdef CHRONO_POSTPROCESS
+    blender_save = false;
+    blender_each = 1;
+    blender_num = 0;
+#endif
+}
+
+ChIrrGUI::~ChIrrGUI() {
+    delete m_receiver;
+}
 
 void ChIrrGUI::Initialize(ChVisualSystemIrrlicht* vis) {
     m_vis = vis;
@@ -331,10 +359,6 @@ void ChIrrGUI::Initialize(ChVisualSystemIrrlicht* vis) {
     child->setExpanded(true);
 }
 
-ChIrrGUI::~ChIrrGUI() {
-    delete m_receiver;
-}
-
 void ChIrrGUI::AddUserEventReceiver(irr::IEventReceiver* receiver) {
     m_user_receivers.push_back(receiver);
 }
@@ -384,6 +408,8 @@ static void recurse_update_tree_node(ChValue* value, irr::gui::IGUITreeViewNode*
     int ni = 0;
     auto subnode = mnode->getFirstChild();
     for (auto j : mexplorer2.GetFetchResults()) {
+        if (!j->GetRawPtr())
+            continue;
         ++ni;
         if (!subnode) {
             subnode = mnode->addChildBack(L"_to_set_");
@@ -401,24 +427,24 @@ static void recurse_update_tree_node(ChValue* value, irr::gui::IGUITreeViewNode*
             jstr += irr::core::stringw(j->GetClassRegisteredName().c_str());
             jstr += L"] ";
         }
-        if (auto mydouble = j->PointerUpCast<double>()) {
+        if (j->GetTypeid() == std::type_index(typeid(double))) {
             jstr += " =";
-            auto stringval = std::to_string(*mydouble);
+            auto stringval = std::to_string(*static_cast<double*>(j->GetRawPtr()));
             jstr += irr::core::stringw(stringval.c_str());
         }
-        if (auto myfloat = j->PointerUpCast<float>()) {
+        if (j->GetTypeid() == std::type_index(typeid(float))) {
             jstr += " =";
-            auto stringval = std::to_string(*myfloat);
+            auto stringval = std::to_string(*static_cast<float*>(j->GetRawPtr()));
             jstr += irr::core::stringw(stringval.c_str());
         }
-        if (auto myint = j->PointerUpCast<int>()) {
+        if (j->GetTypeid() == std::type_index(typeid(int))) {
             jstr += " =";
-            auto stringval = std::to_string(*myint);
+            auto stringval = std::to_string(*static_cast<int*>(j->GetRawPtr()));
             jstr += irr::core::stringw(stringval.c_str());
         }
-        if (auto mybool = j->PointerUpCast<bool>()) {
+        if (j->GetTypeid() == std::type_index(typeid(bool))) {
             jstr += " =";
-            auto stringval = std::to_string(*mybool);
+            auto stringval = std::to_string(*static_cast<bool*>(j->GetRawPtr()));
             jstr += irr::core::stringw(stringval.c_str());
         }
         subnode->setText(jstr.c_str());
@@ -558,7 +584,59 @@ void ChIrrGUI::BeginScene() {
 void ChIrrGUI::EndScene() {
     if (show_profiler)
         tools::drawProfiler(m_vis);
+
+#ifdef CHRONO_POSTPROCESS
+    if (blender_save && blender_exporter) {
+        if (blender_num % blender_each == 0) {
+            blender_exporter->ExportData();
+        }
+        blender_num++;
+    }
+#endif
+
 }
+
+
+
+
+
+#ifdef CHRONO_POSTPROCESS
+
+/// If set to true, each frame of the animation will be saved on the disk
+/// as a sequence of scripts to be rendered via POVray. Only if solution build with ENABLE_MODULE_POSTPROCESS.
+void ChIrrGUI::SetBlenderSave(bool val) {
+    blender_save = val;
+
+    if (!blender_save) {
+        return;
+    }
+
+    if (blender_save && !blender_exporter) {
+        blender_exporter = std::unique_ptr<postprocess::ChBlender>(new postprocess::ChBlender(m_system));
+        
+        // Set the path where it will save all .pov, .ini, .asset and .dat files,
+        // a directory will be created if not existing
+        blender_exporter->SetBasePath("blender_project");
+
+        // Add all items (already in scene) to the Blender exporter
+        blender_exporter->AddAll();
+        
+        if (m_vis->GetCameraVertical() == CameraVerticalDir::Z)
+            blender_exporter->SetBlenderUp_is_ChronoZ();
+        if (m_vis->GetCameraVertical() == CameraVerticalDir::Y)
+            blender_exporter->SetBlenderUp_is_ChronoY();
+
+        // Static default camera in Blender matches the one in Irrlicht at the moment of starting saving
+        //blender_exporter->SetCamera(ChVectorIrr(GetActiveCamera()->getAbsolutePosition()), ChVectorIrr(GetActiveCamera()->getTarget()),
+        //    GetActiveCamera()->getFOV() * GetActiveCamera()->getAspectRatio() * chrono::CH_C_RAD_TO_DEG);
+        
+        blender_exporter->ExportScript();
+
+        blender_num = 0;
+    }
+}
+#endif
+
 
 }  // end namespace irrlicht
 }  // end namespace chrono

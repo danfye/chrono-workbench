@@ -22,32 +22,35 @@ namespace geometry {
 // Register into the object factory, to enable run-time dynamic creation and persistence
 CH_FACTORY_REGISTER(ChRoundedCylinder)
 
+ChRoundedCylinder::ChRoundedCylinder(double radius, double height, double sphere_radius)
+    : r(radius), h(height), sr(sphere_radius) {}
+
 ChRoundedCylinder::ChRoundedCylinder(const ChRoundedCylinder& source) {
-    rad = source.rad;
-    hlen = source.hlen;
-    radsphere = source.radsphere;
+    r = source.r;
+    h = source.h;
+    sr = source.sr;
 }
 
-void ChRoundedCylinder::ArchiveOUT(ChArchiveOut& marchive) {
+void ChRoundedCylinder::ArchiveOut(ChArchiveOut& marchive) {
     // version number
     marchive.VersionWrite<ChRoundedCylinder>();
     // serialize parent class
-    ChGeometry::ArchiveOUT(marchive);
+    ChGeometry::ArchiveOut(marchive);
     // serialize all member data:
-    marchive << CHNVP(rad);
-    marchive << CHNVP(hlen);
-    marchive << CHNVP(radsphere);
+    marchive << CHNVP(r);
+    marchive << CHNVP(h);
+    marchive << CHNVP(sr);
 }
 
-void ChRoundedCylinder::ArchiveIN(ChArchiveIn& marchive) {
+void ChRoundedCylinder::ArchiveIn(ChArchiveIn& marchive) {
     // version number
     /*int version =*/marchive.VersionRead<ChRoundedCylinder>();
     // deserialize parent class
-    ChGeometry::ArchiveIN(marchive);
+    ChGeometry::ArchiveIn(marchive);
     // stream in all member data:
-    marchive >> CHNVP(rad);
-    marchive >> CHNVP(hlen);
-    marchive >> CHNVP(radsphere);
+    marchive >> CHNVP(r);
+    marchive >> CHNVP(h);
+    marchive >> CHNVP(sr);
 }
 
 }  // end namespace geometry

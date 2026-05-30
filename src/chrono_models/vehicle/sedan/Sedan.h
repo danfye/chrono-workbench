@@ -25,9 +25,11 @@
 
 #include "chrono_models/ChApiModels.h"
 #include "chrono_models/vehicle/sedan/Sedan_Vehicle.h"
-#include "chrono_models/vehicle/sedan/Sedan_SimpleMapPowertrain.h"
+#include "chrono_models/vehicle/sedan/Sedan_AutomaticTransmissionSimpleMap.h"
+#include "chrono_models/vehicle/sedan/Sedan_EngineSimpleMap.h"
 #include "chrono_models/vehicle/sedan/Sedan_RigidTire.h"
 #include "chrono_models/vehicle/sedan/Sedan_TMeasyTire.h"
+#include "chrono_models/vehicle/sedan/Sedan_TMsimpleTire.h"
 #include "chrono_models/vehicle/sedan/Sedan_Pac02Tire.h"
 
 namespace chrono {
@@ -67,7 +69,6 @@ class CH_MODELS_API Sedan {
     ChWheeledVehicle& GetVehicle() const { return *m_vehicle; }
     std::shared_ptr<ChChassis> GetChassis() const { return m_vehicle->GetChassis(); }
     std::shared_ptr<ChBodyAuxRef> GetChassisBody() const { return m_vehicle->GetChassisBody(); }
-    std::shared_ptr<ChPowertrain> GetPowertrain() const { return m_vehicle->GetPowertrain(); }
 
     void Initialize();
 

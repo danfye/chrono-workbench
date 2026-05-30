@@ -33,7 +33,8 @@ def main():
     my_hmmwv.SetContactMethod(chrono.ChContactMethod_NSC)
     my_hmmwv.SetChassisFixed(False);
     my_hmmwv.SetInitPosition(chrono.ChCoordsysD(chrono.ChVectorD(-10, -2, 0.6), chrono.ChQuaternionD(1, 0, 0, 0)))
-    my_hmmwv.SetPowertrainType(veh.PowertrainModelType_SIMPLE)
+    my_hmmwv.SetEngineType(veh.EngineModelType_SIMPLE)
+    my_hmmwv.SetTransmissionType(veh.TransmissionModelType_SIMPLE_MAP)
     my_hmmwv.SetDriveType(veh.DrivelineTypeWV_AWD)
     my_hmmwv.SetTireType(veh.TireModelType_TMEASY)
     my_hmmwv.SetTireStepSize(tire_step_size)
@@ -91,7 +92,7 @@ def main():
     vis.AttachVehicle(my_hmmwv.GetVehicle())
 
     # Create the interactive driver system
-    driver = veh.ChIrrGuiDriver(vis)
+    driver = veh.ChInteractiveDriverIRR(vis)
     driver.SetSteeringDelta(0.02)
     driver.SetThrottleDelta(0.02)
     driver.SetBrakingDelta(0.06)
@@ -114,7 +115,7 @@ def main():
         driver.Synchronize(time)
         terrain.Synchronize(time)
         my_hmmwv.Synchronize(time, driver_inputs, terrain)
-        vis.Synchronize(driver.GetInputModeAsString(), driver_inputs)
+        vis.Synchronize(time, driver_inputs)
 
         # Advance simulation for one timestep for all modules
         driver.Advance(step_size)

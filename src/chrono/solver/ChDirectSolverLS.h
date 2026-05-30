@@ -164,10 +164,10 @@ class ChApi ChDirectSolverLS : public ChSolverLS {
     virtual double SolveCurrent();
 
     /// Method to allow serialization of transient data to archives.
-    virtual void ArchiveOUT(ChArchiveOut& marchive) override;
+    virtual void ArchiveOut(ChArchiveOut& marchive) override;
 
     /// Method to allow de serialization of transient data from archives.
-    virtual void ArchiveIN(ChArchiveIn& marchive) override;
+    virtual void ArchiveIn(ChArchiveIn& marchive) override;
 
   protected:
     ChDirectSolverLS();
@@ -205,10 +205,10 @@ class ChApi ChDirectSolverLS : public ChSolverLS {
     bool m_use_rhs_sparsity;      ///< leverage right-hand side sparsity?
     bool m_null_pivot_detection;  ///< enable detection of zero pivots?
 
-    ChTimer<> m_timer_setup_assembly;    ///< timer for matrix assembly
-    ChTimer<> m_timer_setup_solvercall;  ///< timer for factorization
-    ChTimer<> m_timer_solve_assembly;    ///< timer for RHS assembly
-    ChTimer<> m_timer_solve_solvercall;  ///< timer for solution
+    ChTimer m_timer_setup_assembly;    ///< timer for matrix assembly
+    ChTimer m_timer_setup_solvercall;  ///< timer for factorization
+    ChTimer m_timer_solve_assembly;    ///< timer for RHS assembly
+    ChTimer m_timer_solve_solvercall;  ///< timer for solution
 
   private:
     void WriteMatrix(const std::string& filename, const ChSparseMatrix& M);

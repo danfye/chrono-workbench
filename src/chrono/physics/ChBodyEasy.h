@@ -28,9 +28,9 @@
 
 namespace chrono {
 
-/// Class for quick creation of rigid bodies with a spherical shape.
-/// In addition to the base class, this optionally sets the visualization and/or collision shape and automatically
-/// calculates intertia properties based on the geometry.
+/// Create rigid bodies with a spherical shape.
+/// Optionally sets the visualization and/or collision geometry and automatically calculates intertia properties based
+/// on the geometry.
 class ChApi ChBodyEasySphere : public ChBody {
   public:
     /// Create a ChBody with optional sphere visualization and/or collision shape. The sphere is created centered at the
@@ -52,22 +52,30 @@ class ChApi ChBodyEasySphere : public ChBody {
                      collision::ChCollisionSystemType collision_type  ///< collision model type
     );
 
+    /// Deserialization for non-default constructor classes.
+    virtual void ArchiveOutConstructor(ChArchiveOut& marchive);
+
+    /// Serialization for non-default constructor classes.
+    static void* ArchiveInConstructor(ChArchiveIn& marchive);
+
   private:
     void SetupBody(double radius,
                    double density,
                    bool visualize,
                    bool collide,
                    std::shared_ptr<ChMaterialSurface> material);
+
+    ChBodyEasySphere(){}
 };
 
-/// Class for quick creation of rigid bodies with an ellipsoid shape.
-/// In addition to the base class, this optionally sets the visualization and/or collision shape and automatically
-/// calculates intertia properties based on the geometry.
+/// Create rigid bodies with an ellipsoid shape.
+/// Optionally sets the visualization and/or collision geometry and automatically calculates intertia properties based
+/// on the geometry.
 class ChApi ChBodyEasyEllipsoid : public ChBody {
   public:
     /// Create a ChBody with optional ellipsoid visualization and/or collision shape. The ellipsoid is created centered
     /// at the center of mass. Mass and inertia are set automatically depending on density.
-    ChBodyEasyEllipsoid(ChVector<> radius,                                      ///< radii of the ellipsoid
+    ChBodyEasyEllipsoid(ChVector<> axes,                                        ///< ellipsoid axis lengths
                         double density,                                         ///< density of the body
                         bool visualize = true,                                  ///< create visualization asset
                         bool collide = false,                                   ///< enable collision
@@ -79,28 +87,38 @@ class ChApi ChBodyEasyEllipsoid : public ChBody {
     /// Create a ChBody with an ellipsoid visualization and collision shape using the specified collision model type.
     /// The ellipsoid is created centered at the center of mass. Mass and inertia are set automatically depending on
     /// density.
-    ChBodyEasyEllipsoid(ChVector<> radius,                               ///< radii of the ellipsoid
+    ChBodyEasyEllipsoid(ChVector<> axes,                                 ///< ellipsoid axis lengths
                         double density,                                  ///< density of the body
                         std::shared_ptr<ChMaterialSurface> material,     ///< surface contact material
                         collision::ChCollisionSystemType collision_type  ///< collision model type
     );
 
+    /// Deserialization for non-default constructor classes.
+    virtual void ArchiveOutConstructor(ChArchiveOut& marchive);
+
+    /// Serialization for non-default constructor classes.
+    static void* ArchiveInConstructor(ChArchiveIn& marchive);
+
   private:
-    void SetupBody(ChVector<> radius,
+    void SetupBody(ChVector<> axes,
                    double density,
                    bool visualize,
                    bool collide,
                    std::shared_ptr<ChMaterialSurface> material);
+
+    ChBodyEasyEllipsoid(){}
 };
 
-/// Class for quick creation of rigid bodies with a cylinder shape.
-/// In addition to the base class, this optionally sets the visualization and/or collision shape and automatically
-/// calculates intertia properties based on the geometry.
+/// Create rigid bodies with a cylinder shape.
+/// Optionally sets the visualization and/or collision geometry and automatically calculates intertia properties based
+/// on the geometry.
 class ChApi ChBodyEasyCylinder : public ChBody {
   public:
-    /// Create a ChBody with optional cylinder visualization and/or collision shape. The cylinder is created along the Y
-    /// axis and centered at the center of mass. Mass and inertia are set automatically depending on density.
-    ChBodyEasyCylinder(double radius,                                          ///< radius of the cylinder
+    /// Create a ChBody with optional cylinder visualization and/or collision shape.
+    /// The cylinder is created along the specified axis and centered at the center of mass.
+    /// Mass and inertia are set automatically depending on density.
+    ChBodyEasyCylinder(geometry::ChAxis direction,                             ///< cylinder direction
+                       double radius,                                          ///< radius of the cylinder
                        double height,                                          ///< height of the cylinder
                        double density,                                         ///< density of the body
                        bool visualize = true,                                  ///< create visualization asset
@@ -110,28 +128,38 @@ class ChApi ChBodyEasyCylinder : public ChBody {
                            chrono_types::make_shared<collision::ChCollisionModelBullet>()  ///< collision model
     );
 
-    /// Create a ChBody with a cylinder visualization and collision shape using the specified collision model type. The
-    /// cylinder is created along the Y axis and centered at the center of mass. Mass and inertia are set automatically
-    /// depending on density.
-    ChBodyEasyCylinder(double radius,                                   ///< radius of the cylinder
+    /// Create a ChBody with a cylinder visualization and collision shape using the specified collision model type.
+    /// The cylinder is created along the specified axis and centered at the center of mass.
+    /// Mass and inertia are set automatically depending on density.
+    ChBodyEasyCylinder(geometry::ChAxis direction,                      ///< cylinder direction
+                       double radius,                                   ///< radius of the cylinder
                        double height,                                   ///< height of the cylinder
                        double density,                                  ///< density of the body
                        std::shared_ptr<ChMaterialSurface> material,     ///< surface contact material
                        collision::ChCollisionSystemType collision_type  ///< collision model type
     );
 
+    /// Deserialization for non-default constructor classes.
+    virtual void ArchiveOutConstructor(ChArchiveOut& marchive);
+
+    /// Serialization for non-default constructor classes.
+    static void* ArchiveInConstructor(ChArchiveIn& marchive);
+
   private:
-    void SetupBody(double radius,
+    void SetupBody(geometry::ChAxis direction,
+                   double radius,
                    double height,
                    double density,
                    bool visualize,
                    bool collide,
                    std::shared_ptr<ChMaterialSurface> material);
+
+    ChBodyEasyCylinder(){}
 };
 
-/// Class for quick creation of rigid bodies with a box shape.
-/// In addition to the base class, this optionally sets the visualization and/or collision shape and automatically
-/// calculates intertia properties based on the geometry.
+/// Create rigid bodies with a box shape.
+/// Optionally sets the visualization and/or collision geometry and automatically calculates intertia properties based
+/// on the geometry.
 class ChApi ChBodyEasyBox : public ChBody {
   public:
     /// Create a ChBody with optional box visualization and/or collision shape. The box is created centered at the
@@ -157,7 +185,13 @@ class ChApi ChBodyEasyBox : public ChBody {
                   collision::ChCollisionSystemType collision_type  ///< collision model type
     );
 
-  private:
+    /// Deserialization for non-default constructor classes.
+    virtual void ArchiveOutConstructor(ChArchiveOut& marchive);
+
+    /// Serialization for non-default constructor classes.
+    static void* ArchiveInConstructor(ChArchiveIn& marchive);
+
+private:
     void SetupBody(double Xsize,
                    double Ysize,
                    double Zsize,
@@ -165,11 +199,13 @@ class ChApi ChBodyEasyBox : public ChBody {
                    bool visualize,
                    bool collide,
                    std::shared_ptr<ChMaterialSurface> material);
+
+    ChBodyEasyBox(){}
 };
 
-/// Class for quick creation of rigid bodies with a convex hull shape.
-/// In addition to the base class, this optionally sets the visualization and/or collision shape and automatically
-/// calculates intertia properties based on the geometry.
+/// Create rigid bodies with a convex hull shape.
+/// Optionally sets the visualization and/or collision geometry and automatically calculates intertia properties based
+/// on the geometry.
 class ChApi ChBodyEasyConvexHull : public ChBody {
   public:
     /// Create a ChBody with optional convex hull visualization and/or collision shape.
@@ -197,6 +233,12 @@ class ChApi ChBodyEasyConvexHull : public ChBody {
 
     std::shared_ptr<geometry::ChTriangleMeshConnected> GetMesh() const { return m_mesh; }
 
+    /// Deserialization for non-default constructor classes.
+    virtual void ArchiveOutConstructor(ChArchiveOut& marchive);
+
+    /// Serialization for non-default constructor classes.
+    static void* ArchiveInConstructor(ChArchiveIn& marchive);
+
   private:
     void SetupBody(std::vector<ChVector<>>& points,
                    double density,
@@ -205,11 +247,13 @@ class ChApi ChBodyEasyConvexHull : public ChBody {
                    std::shared_ptr<ChMaterialSurface> material);
 
     std::shared_ptr<geometry::ChTriangleMeshConnected> m_mesh;
+
+    ChBodyEasyConvexHull(std::shared_ptr<geometry::ChTriangleMeshConnected> mesh) : m_mesh(mesh){}
 };
 
-/// Class for quick creation of rigid bodies with a convex hull shape, with a reference frame distinct from the
-/// centroidal frame. In addition to the base class, this optionally sets the visualization and/or collision shape and
-/// automatically calculates intertia properties based on the geometry.
+/// Create rigid body with a convex hull shape, with a reference frame distinct from the centroidal frame.
+/// Optionally sets the visualization and/or collision geometry and automatically calculates intertia properties based
+/// on the geometry.
 class ChApi ChBodyEasyConvexHullAuxRef : public ChBodyAuxRef {
   public:
     /// Create a ChBodyAuxRef with optional convex hull visualization and/or collision shape. The convex hull is defined
@@ -235,6 +279,12 @@ class ChApi ChBodyEasyConvexHullAuxRef : public ChBodyAuxRef {
 
     std::shared_ptr<geometry::ChTriangleMeshConnected> GetMesh() const { return m_mesh; }
 
+    /// Deserialization for non-default constructor classes.
+    virtual void ArchiveOutConstructor(ChArchiveOut& marchive);
+
+    /// Serialization for non-default constructor classes.
+    static void* ArchiveInConstructor(ChArchiveIn& marchive);
+
   private:
     void SetupBody(std::vector<ChVector<>>& points,
                    double density,
@@ -243,11 +293,13 @@ class ChApi ChBodyEasyConvexHullAuxRef : public ChBodyAuxRef {
                    std::shared_ptr<ChMaterialSurface> material);
 
     std::shared_ptr<geometry::ChTriangleMeshConnected> m_mesh;
+
+    ChBodyEasyConvexHullAuxRef(std::shared_ptr<geometry::ChTriangleMeshConnected> mesh) : m_mesh(mesh) {}
 };
 
-/// Class for quick creation of rigid bodies with a mesh shape, with a reference frame distinct from the
-/// centroidal frame. In addition to the base class, this optionally sets the visualization and/or collision shape and
-/// automatically calculates intertia properties based on the geometry.
+/// Create rigid bodies with a mesh shape, with a reference frame distinct from the centroidal frame.
+/// Optionally sets the visualization and/or collision geometry and automatically calculates intertia properties based
+/// on the geometry.
 class ChApi ChBodyEasyMesh : public ChBodyAuxRef {
   public:
     /// Create a ChBodyAuxRef with optional mesh visualization and/or collision shape. The mesh is assumed to be
@@ -297,6 +349,12 @@ class ChApi ChBodyEasyMesh : public ChBodyAuxRef {
                    collision::ChCollisionSystemType collision_type  ///< collision model type
     );
 
+    /// Deserialization for non-default constructor classes.
+    virtual void ArchiveOutConstructor(ChArchiveOut& marchive);
+
+    /// Serialization for non-default constructor classes.
+    static void* ArchiveInConstructor(ChArchiveIn& marchive);
+
   private:
     void SetupBody(std::shared_ptr<geometry::ChTriangleMeshConnected> trimesh,
                    const std::string& name,
@@ -306,13 +364,16 @@ class ChApi ChBodyEasyMesh : public ChBodyAuxRef {
                    bool collide,
                    std::shared_ptr<ChMaterialSurface> material,
                    double sphere_swept);
+
+    ChBodyEasyMesh(){}
 };
 
-/// Class for quick creation of rigid bodies with a shape made of a cluster of spheres.
-/// In addition to the base class, this optionally sets the visualization and/or collision shape and automatically
-/// calculates intertia properties based on the geometry. Note that the mass and inertia are computed as if spheres are
-/// not intersecting! If a more precise mass/inertia estimation is needed when spheres are intersecting, change mass and
-/// inertia after creation using more advanced formulas.
+/// Create rigid bodies with a shape made of a cluster of spheres.
+/// Optionally sets the visualization and/or collision geometry and automatically calculates intertia properties based
+/// on the geometry.
+/// Note that the mass and inertia are computed as if spheres are not intersecting! If a more precise mass/inertia
+/// estimation is needed when spheres are intersecting, change mass and inertia after creation using more advanced
+/// formulas.
 class ChApi ChBodyEasyClusterOfSpheres : public ChBody {
   public:
     /// Create a ChBody with optional sphere cluster mesh visualization and/or collision shapes. The cluster of spheres
@@ -338,6 +399,12 @@ class ChApi ChBodyEasyClusterOfSpheres : public ChBody {
                                collision::ChCollisionSystemType collision_type  ///< collision model type
     );
 
+    /// Deserialization for non-default constructor classes.
+    virtual void ArchiveOutConstructor(ChArchiveOut& marchive);
+
+    /// Serialization for non-default constructor classes.
+    static void* ArchiveInConstructor(ChArchiveIn& marchive);
+
   private:
     void SetupBody(std::vector<ChVector<>>& positions,
                    std::vector<double>& radii,
@@ -345,6 +412,8 @@ class ChApi ChBodyEasyClusterOfSpheres : public ChBody {
                    bool visualize,
                    bool collide,
                    std::shared_ptr<ChMaterialSurface> material);
+
+    ChBodyEasyClusterOfSpheres(){}
 };
 
 }  // end namespace chrono

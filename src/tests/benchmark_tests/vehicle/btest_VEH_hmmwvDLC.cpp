@@ -26,7 +26,7 @@
 #include "chrono_models/vehicle/hmmwv/HMMWV.h"
 
 #ifdef CHRONO_IRRLICHT
-    #include "chrono_vehicle/wheeled_vehicle/utils/ChWheeledVehicleVisualSystemIrrlicht.h"
+    #include "chrono_vehicle/wheeled_vehicle/ChWheeledVehicleVisualSystemIrrlicht.h"
 #endif
 
 using namespace chrono;
@@ -60,7 +60,8 @@ class HmmwvDlcTest : public utils::ChBenchmarkTest {
 
 template <typename EnumClass, EnumClass TIRE_MODEL>
 HmmwvDlcTest<EnumClass, TIRE_MODEL>::HmmwvDlcTest() : m_step_veh(2e-3), m_step_tire(1e-3) {
-    PowertrainModelType powertrain_model = PowertrainModelType::SHAFTS;
+    EngineModelType engine_model = EngineModelType::SHAFTS;
+    TransmissionModelType transmission_model = TransmissionModelType::SHAFTS;
     DrivelineTypeWV drive_type = DrivelineTypeWV::AWD;
 
     // Create the HMMWV vehicle, set parameters, and initialize.
@@ -68,7 +69,8 @@ HmmwvDlcTest<EnumClass, TIRE_MODEL>::HmmwvDlcTest() : m_step_veh(2e-3), m_step_t
     m_hmmwv->SetContactMethod(ChContactMethod::SMC);
     m_hmmwv->SetChassisFixed(false);
     m_hmmwv->SetInitPosition(ChCoordsys<>(ChVector<>(-120, 0, 0.7), ChQuaternion<>(1, 0, 0, 0)));
-    m_hmmwv->SetPowertrainType(powertrain_model);
+    m_hmmwv->SetEngineType(engine_model);
+    m_hmmwv->SetTransmissionType(transmission_model);
     m_hmmwv->SetDriveType(drive_type);
     m_hmmwv->SetTireType(TIRE_MODEL);
     m_hmmwv->SetTireStepSize(m_step_tire);
@@ -153,7 +155,7 @@ void HmmwvDlcTest<EnumClass, TIRE_MODEL>::SimulateVis() {
         vis->BeginScene();
         vis->Render();
         ExecuteStep();
-        vis->Synchronize("Acceleration test", driver_inputs);
+        vis->Synchronize(m_hmmwv->GetSystem()->GetChTime(), driver_inputs);
         vis->Advance(m_step_veh);
         vis->EndScene();
     }

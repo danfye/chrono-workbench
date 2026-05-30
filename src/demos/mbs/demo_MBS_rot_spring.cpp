@@ -28,26 +28,24 @@
 
 using namespace chrono;
 using namespace chrono::irrlicht;
-using namespace irr;
-
-// =============================================================================
-
-double spring_coef = 40;
-double damping_coef = 2;
-double rest_angle = CH_C_PI / 6;
 
 // =============================================================================
 
 // Functor class implementing the torque for a ChLinkRSDA link.
 class MySpringTorque : public ChLinkRSDA::TorqueFunctor {
+  public:
+    MySpringTorque(double k, double c) : m_k(k), m_c(c) {}
     virtual double evaluate(double time,            // current time
+                            double rest_angle,      // undeformed angle
                             double angle,           // relative angle of rotation
                             double vel,             // relative angular speed
                             const ChLinkRSDA& link  // associated link
                             ) override {
-        double torque = -spring_coef * (angle - rest_angle) - damping_coef * vel;
+        double torque = -m_c * (angle - rest_angle) - m_k * vel;
         return torque;
     }
+    double m_k;
+    double m_c;
 };
 
 // =============================================================================
@@ -74,11 +72,9 @@ int main(int argc, char* argv[]) {
     ground->SetCollide(false);
 
     // Visualization for revolute joint
-    auto cyl_rev = chrono_types::make_shared<ChCylinderShape>();
-    cyl_rev->GetCylinderGeometry().p1 = rev_pos + 0.2 * rev_dir;
-    cyl_rev->GetCylinderGeometry().p2 = rev_pos - 0.2 * rev_dir;
-    cyl_rev->GetCylinderGeometry().rad = 0.1;
-    ground->AddVisualShape(cyl_rev);
+    geometry::ChLineSegment seg(rev_pos + 0.2 * rev_dir, rev_pos - 0.2 * rev_dir);
+    auto cyl_rev = chrono_types::make_shared<ChCylinderShape>(0.1, seg.GetLength());
+    ground->AddVisualShape(cyl_rev, seg.GetFrame());
 
     // Offset from joint to body COM
     ChVector<> offset(1.5, 0, 0);
@@ -101,17 +97,13 @@ int main(int argc, char* argv[]) {
     body->SetInertiaXX(ChVector<>(1, 1, 1));
 
     // Attach visualization assets
-    auto sph = chrono_types::make_shared<ChSphereShape>();
-    sph->GetSphereGeometry().rad = 0.3;
+    auto sph = chrono_types::make_shared<ChSphereShape>(0.3);
     sph->SetColor(ChColor(0.7f, 0.8f, 0.8f));
     body->AddVisualShape(sph);
 
-    auto cyl = chrono_types::make_shared<ChCylinderShape>();
-    cyl->GetCylinderGeometry().p1 = ChVector<>(-1.5, 0, 0);
-    cyl->GetCylinderGeometry().p2 = ChVector<>(0, 0, 0);
-    cyl->GetCylinderGeometry().rad = 0.1;
+    auto cyl = chrono_types::make_shared<ChCylinderShape>(0.1, 1.5);
     cyl->SetColor(ChColor(0.7f, 0.8f, 0.8f));
-    body->AddVisualShape(cyl);
+    body->AddVisualShape(cyl, ChFrame<>(ChVector<>(-0.75, 0, 0), Q_from_AngY(CH_C_PI_2)));
 
     // Create revolute joint between body and ground
     auto rev = chrono_types::make_shared<ChLinkLockRevolute>();
@@ -119,11 +111,16 @@ int main(int argc, char* argv[]) {
     sys.AddLink(rev);
 
     // Create the rotational spring between body and ground
-    auto torque = chrono_types::make_shared<MySpringTorque>();
+    double spring_coef = 40;
+    double damping_coef = 2;
+    double rest_angle = CH_C_PI / 6;
+
+    auto torque_functor = chrono_types::make_shared<MySpringTorque>(spring_coef, damping_coef);
     auto spring = chrono_types::make_shared<ChLinkRSDA>();
+    spring->SetRestAngle(rest_angle);
     spring->Initialize(body, ground, ChCoordsys<>(rev_pos, rev_rot));
     spring->AddVisualShape(chrono_types::make_shared<ChRotSpringShape>(0.5, 100));
-    spring->RegisterTorqueFunctor(torque);
+    spring->RegisterTorqueFunctor(torque_functor);
     sys.AddLink(spring);
 
     // Create the Irrlicht visualization sys

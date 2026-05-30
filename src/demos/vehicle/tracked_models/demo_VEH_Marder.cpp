@@ -20,16 +20,16 @@
 #include "chrono/solver/ChSolverBB.h"
 
 #include "chrono_vehicle/ChVehicleModelData.h"
-#include "chrono_vehicle/driver/ChIrrGuiDriver.h"
+#include "chrono_vehicle/driver/ChInteractiveDriverIRR.h"
 #include "chrono_vehicle/terrain/RigidTerrain.h"
 #include "chrono_vehicle/output/ChVehicleOutputASCII.h"
 
-#include "chrono_vehicle/tracked_vehicle/utils/ChTrackedVehicleVisualSystemIrrlicht.h"
+#include "chrono_vehicle/tracked_vehicle/ChTrackedVehicleVisualSystemIrrlicht.h"
 
 #include "chrono_models/vehicle/marder/Marder.h"
 
 #ifdef CHRONO_PARDISO_MKL
-#include "chrono_pardisomkl/ChSolverPardisoMKL.h"
+    #include "chrono_pardisomkl/ChSolverPardisoMKL.h"
 #endif
 
 #include "chrono_thirdparty/filesystem/path.h"
@@ -100,14 +100,16 @@ int main(int argc, char* argv[]) {
     ////TrackShoeType shoe_type = TrackShoeType::SINGLE_PIN;
     ////DrivelineTypeTV driveline_type = DrivelineTypeTV::SIMPLE;
     BrakeType brake_type = BrakeType::SIMPLE;
-    PowertrainModelType powertrain_type = PowertrainModelType::SIMPLE_CVT;
+    EngineModelType engine_type = EngineModelType::SIMPLE;
+    TransmissionModelType transmission_type = TransmissionModelType::SIMPLE_MAP;
 
     Marder marder;
     marder.SetContactMethod(contact_method);
     ////marder.SetTrackShoeType(shoe_type);
     ////marder.SetDrivelineType(driveline_type);
     marder.SetBrakeType(brake_type);
-    marder.SetPowertrainType(powertrain_type);
+    marder.SetEngineType(engine_type);
+    marder.SetTransmissionType(transmission_type);
     marder.SetChassisCollisionType(chassis_collision_type);
 
     ////marder.SetChassisFixed(true);
@@ -223,7 +225,7 @@ int main(int argc, char* argv[]) {
     // Create the driver system
     // ------------------------
 
-    ChIrrGuiDriver driver(*vis);
+    ChInteractiveDriverIRR driver(*vis);
 
     // Set the time response for keyboard inputs.
     double steering_time = 0.5;  // time to go from 0 to +1 (or from 0 to -1)
@@ -403,7 +405,7 @@ int main(int argc, char* argv[]) {
         driver.Synchronize(time);
         terrain.Synchronize(time);
         marder.Synchronize(time, driver_inputs, shoe_forces_left, shoe_forces_right);
-        vis->Synchronize("", driver_inputs);
+        vis->Synchronize(time, driver_inputs);
 
         // Advance simulation for one timestep for all modules
         driver.Advance(step_size);
@@ -436,12 +438,9 @@ void AddFixedObstacles(ChSystem* system) {
     obstacle->SetCollide(true);
 
     // Visualization
-    auto shape = chrono_types::make_shared<ChCylinderShape>();
-    shape->GetCylinderGeometry().p1 = ChVector<>(0, -length * 0.5, 0);
-    shape->GetCylinderGeometry().p2 = ChVector<>(0, length * 0.5, 0);
-    shape->GetCylinderGeometry().rad = radius;
-    shape->SetTexture(vehicle::GetDataFile("terrain/textures/tile4.jpg"));
-    obstacle->AddVisualShape(shape);
+    auto shape = chrono_types::make_shared<ChCylinderShape>(radius, length);
+    shape->SetTexture(vehicle::GetDataFile("terrain/textures/tile4.jpg"), 10, 10);
+    obstacle->AddVisualShape(shape, ChFrame<>(VNULL, Q_from_AngX(CH_C_PI_2)));
 
     // Contact
     ChContactMaterialData minfo;
@@ -451,7 +450,7 @@ void AddFixedObstacles(ChSystem* system) {
     auto obst_mat = minfo.CreateMaterial(system->GetContactMethod());
 
     obstacle->GetCollisionModel()->ClearModel();
-    obstacle->GetCollisionModel()->AddCylinder(obst_mat, radius, radius, length * 0.5);
+    obstacle->GetCollisionModel()->AddCylinder(obst_mat, radius, length, VNULL, Q_from_AngX(CH_C_PI_2));
     obstacle->GetCollisionModel()->BuildModel();
 
     system->AddBody(obstacle);
@@ -478,8 +477,7 @@ void AddFallingObjects(ChSystem* system) {
     ball->GetCollisionModel()->AddSphere(obst_mat, radius);
     ball->GetCollisionModel()->BuildModel();
 
-    auto sphere = chrono_types::make_shared<ChSphereShape>();
-    sphere->GetSphereGeometry().rad = radius;
+    auto sphere = chrono_types::make_shared<ChSphereShape>(radius);
     sphere->SetTexture(GetChronoDataFile("textures/bluewhite.png"));
     ball->AddVisualShape(sphere);
 

@@ -23,7 +23,7 @@ namespace chrono {
 class ChApi ChBarrelShape : public ChVisualShape {
   public:
     ChBarrelShape();
-    ChBarrelShape(double mHlow, double mHsup, double mRvert, double mRhor, double mRoffset);
+    ChBarrelShape(double Y_low, double Y_high, double axis_vert, double axis_hor, double R_offset);
 
     ~ChBarrelShape() {}
 
@@ -43,10 +43,10 @@ class ChApi ChBarrelShape : public ChVisualShape {
     void SetRoffset(double ms) { Roffset = ms; }
 
     /// Method to allow serialization of transient data to archives.
-    virtual void ArchiveOUT(ChArchiveOut& marchive) override;
+    virtual void ArchiveOut(ChArchiveOut& marchive) override;
 
     /// Method to allow de-serialization of transient data from archives.
-    virtual void ArchiveIN(ChArchiveIn& marchive) override;
+    virtual void ArchiveIn(ChArchiveIn& marchive) override;
 
   private:
     // geometry::ChBarrel gbarrel; // maybe in future the following data can be moved into a ChGeometry class?

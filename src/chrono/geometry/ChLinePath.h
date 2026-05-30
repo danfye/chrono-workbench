@@ -38,7 +38,8 @@ class ChApi ChLinePath : public ChLine {
     /// "Virtual" copy constructor (covariant return type).
     virtual ChLinePath* Clone() const override { return new ChLinePath(*this); }
 
-    virtual GeometryType GetClassType() const override { return LINE_PATH; }
+    /// Get the class type as an enum.
+    virtual Type GetClassType() const override { return Type::LINE_PATH; }
 
     virtual int Get_complexity() const override { return 2; }
 
@@ -112,10 +113,10 @@ class ChApi ChLinePath : public ChLine {
     double GetContinuityMaxError() const;
 
     /// Method to allow serialization of transient data to archives.
-    virtual void ArchiveOUT(ChArchiveOut& marchive) override;
+    virtual void ArchiveOut(ChArchiveOut& marchive) override;
 
     /// Method to allow de-serialization of transient data from archives.
-    virtual void ArchiveIN(ChArchiveIn& marchive) override;
+    virtual void ArchiveIn(ChArchiveIn& marchive) override;
 };
 
 }  // end namespace geometry

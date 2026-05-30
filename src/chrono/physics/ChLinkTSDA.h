@@ -28,6 +28,8 @@
 #include "chrono/solver/ChVariablesGenericDiagonalMass.h"
 #include "chrono/solver/ChKblockGeneric.h"
 
+#include "chrono_thirdparty/rapidjson/document.h"
+
 namespace chrono {
 
 /// Class for translational spring-damper-actuator (TSDA) with the force optionally specified through a functor object.
@@ -118,10 +120,20 @@ class ChApi ChLinkTSDA : public ChLink {
                                 double vel,             ///< current velocity (positive when extending)
                                 const ChLinkTSDA& link  ///< associated TSDA link
                                 ) = 0;
+
+#ifndef SWIG
+        /// Optional reporting function to generate a JSON value with functor information.
+        virtual rapidjson::Value exportJSON(rapidjson::Document::AllocatorType& allocator) {
+            return rapidjson::Value();
+        }
+#endif
     };
 
     /// Specify the functor object for calculating the force.
     void RegisterForceFunctor(std::shared_ptr<ForceFunctor> functor) { m_force_fun = functor; }
+
+    /// Return the functor object for calculating the force (may be empty).
+    std::shared_ptr<ForceFunctor> GetForceFunctor() const { return m_force_fun; }
 
     /// Class to be used as a callback interface for specifying the ODE, y' = f(t,y); y(0) = y0.
     class ChApi ODE {
@@ -173,10 +185,10 @@ class ChApi ChLinkTSDA : public ChLink {
     );
 
     /// Method to allow serialization of transient data to archives.
-    virtual void ArchiveOUT(ChArchiveOut& marchive) override;
+    virtual void ArchiveOut(ChArchiveOut& marchive) override;
 
     /// Method to allow deserialization of transient data from archives.
-    virtual void ArchiveIN(ChArchiveIn& marchive) override;
+    virtual void ArchiveIn(ChArchiveIn& marchive) override;
 
   private:
     virtual void Update(double mytime, bool update_assets = true) override;

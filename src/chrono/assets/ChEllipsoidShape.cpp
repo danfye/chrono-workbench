@@ -20,24 +20,35 @@ CH_FACTORY_REGISTER(ChEllipsoidShape)
 ChEllipsoidShape::ChEllipsoidShape() {
     SetMutable(false);
 }
+
+ChEllipsoidShape::ChEllipsoidShape(double axis_x, double axis_y, double axis_z) {
+    gellipsoid.rad = ChVector<>(axis_x / 2, axis_y / 2, axis_z / 2);
+    SetMutable(false);
+}
+
+ChEllipsoidShape::ChEllipsoidShape(const ChVector<>& axes) {
+    gellipsoid.rad = axes / 2;
+    SetMutable(false);
+}
+
 ChEllipsoidShape::ChEllipsoidShape(const geometry::ChEllipsoid& ellipsoid) : gellipsoid(ellipsoid) {
     SetMutable(false);
 }
 
-void ChEllipsoidShape::ArchiveOUT(ChArchiveOut& marchive) {
+void ChEllipsoidShape::ArchiveOut(ChArchiveOut& marchive) {
     // version number
     marchive.VersionWrite<ChEllipsoidShape>();
     // serialize parent class
-    ChVisualShape::ArchiveOUT(marchive);
+    ChVisualShape::ArchiveOut(marchive);
     // serialize all member data:
     marchive << CHNVP(gellipsoid);
 }
 
-void ChEllipsoidShape::ArchiveIN(ChArchiveIn& marchive) {
+void ChEllipsoidShape::ArchiveIn(ChArchiveIn& marchive) {
     // version number
-    /*int version =*/ marchive.VersionRead<ChEllipsoidShape>();
+    /*int version =*/marchive.VersionRead<ChEllipsoidShape>();
     // deserialize parent class
-    ChVisualShape::ArchiveIN(marchive);
+    ChVisualShape::ArchiveIn(marchive);
     // stream in all member data:
     marchive >> CHNVP(gellipsoid);
 }

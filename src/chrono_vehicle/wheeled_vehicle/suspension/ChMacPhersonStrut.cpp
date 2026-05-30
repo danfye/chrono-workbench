@@ -82,6 +82,8 @@ void ChMacPhersonStrut::Initialize(std::shared_ptr<ChChassis> chassis,
                                    const ChVector<>& location,
                                    double left_ang_vel,
                                    double right_ang_vel) {
+    ChSuspension::Initialize(chassis, subchassis, steering, location, left_ang_vel, right_ang_vel);
+
     m_parent = chassis;
     m_rel_loc = location;
 
@@ -274,6 +276,7 @@ void ChMacPhersonStrut::InitializeSide(VehicleSide side,
     m_shock[side] = chrono_types::make_shared<ChLinkTSDA>();
     m_shock[side]->SetNameString(m_name + "_shock" + suffix);
     m_shock[side]->Initialize(chassis->GetBody(), m_upright[side], false, points[SHOCK_C], points[SHOCK_U]);
+    m_shock[side]->SetRestLength(getShockRestLength());
     m_shock[side]->RegisterForceFunctor(getShockForceFunctor());
     chassis->GetSystem()->AddLink(m_shock[side]);
 
@@ -347,18 +350,15 @@ double ChMacPhersonStrut::GetTrack() {
 // -----------------------------------------------------------------------------
 // Return current suspension forces
 // -----------------------------------------------------------------------------
-ChSuspension::Force ChMacPhersonStrut::ReportSuspensionForce(VehicleSide side) const {
-    ChSuspension::Force force;
+std::vector<ChSuspension::ForceTSDA> ChMacPhersonStrut::ReportSuspensionForce(VehicleSide side) const {
+    std::vector<ChSuspension::ForceTSDA> forces(2);
 
-    force.spring_force = m_spring[side]->GetForce();
-    force.spring_length = m_spring[side]->GetLength();
-    force.spring_velocity = m_spring[side]->GetVelocity();
+    forces[0] = ChSuspension::ForceTSDA("Spring", m_spring[side]->GetForce(), m_spring[side]->GetLength(),
+                                        m_spring[side]->GetVelocity());
+    forces[1] = ChSuspension::ForceTSDA("Shock", m_shock[side]->GetForce(), m_shock[side]->GetLength(),
+                                        m_shock[side]->GetVelocity());
 
-    force.shock_force = m_shock[side]->GetForce();
-    force.shock_length = m_shock[side]->GetLength();
-    force.shock_velocity = m_shock[side]->GetVelocity();
-
-    return force;
+    return forces;
 }
 
 // -----------------------------------------------------------------------------
@@ -520,11 +520,7 @@ void ChMacPhersonStrut::AddVisualizationStrut(std::shared_ptr<ChBody> strut,
     ChVector<> p_c = strut->TransformPointParentToLocal(pt_c);
     ChVector<> p_u = strut->TransformPointParentToLocal(pt_u);
 
-    auto cyl = chrono_types::make_shared<ChCylinderShape>();
-    cyl->GetCylinderGeometry().p1 = p_c;
-    cyl->GetCylinderGeometry().p2 = p_u;
-    cyl->GetCylinderGeometry().rad = radius;
-    strut->AddVisualShape(cyl);
+  ChVehicleGeometry::AddVisualizationCylinder(strut, p_c, p_u, radius);
 }
 
 void ChMacPhersonStrut::AddVisualizationControlArm(std::shared_ptr<ChBody> arm,
@@ -532,22 +528,13 @@ void ChMacPhersonStrut::AddVisualizationControlArm(std::shared_ptr<ChBody> arm,
                                                    const ChVector<> pt_B,
                                                    const ChVector<> pt_U,
                                                    double radius) {
-    // Express hardpoint locations in body frame.
-    ChVector<> p_F = arm->TransformPointParentToLocal(pt_F);
-    ChVector<> p_B = arm->TransformPointParentToLocal(pt_B);
-    ChVector<> p_U = arm->TransformPointParentToLocal(pt_U);
+  // Express hardpoint locations in body frame.
+  ChVector<> p_F = arm->TransformPointParentToLocal(pt_F);
+  ChVector<> p_B = arm->TransformPointParentToLocal(pt_B);
+  ChVector<> p_U = arm->TransformPointParentToLocal(pt_U);
 
-    auto cyl_F = chrono_types::make_shared<ChCylinderShape>();
-    cyl_F->GetCylinderGeometry().p1 = p_F;
-    cyl_F->GetCylinderGeometry().p2 = p_U;
-    cyl_F->GetCylinderGeometry().rad = radius;
-    arm->AddVisualShape(cyl_F);
-
-    auto cyl_B = chrono_types::make_shared<ChCylinderShape>();
-    cyl_B->GetCylinderGeometry().p1 = p_B;
-    cyl_B->GetCylinderGeometry().p2 = p_U;
-    cyl_B->GetCylinderGeometry().rad = radius;
-    arm->AddVisualShape(cyl_B);
+  ChVehicleGeometry::AddVisualizationCylinder(arm, p_F, p_U, radius);
+  ChVehicleGeometry::AddVisualizationCylinder(arm, p_B, p_U, radius);
 }
 
 void ChMacPhersonStrut::AddVisualizationUpright(std::shared_ptr<ChBody> upright,
@@ -565,27 +552,15 @@ void ChMacPhersonStrut::AddVisualizationUpright(std::shared_ptr<ChBody> upright,
     ChVector<> p_T = upright->TransformPointParentToLocal(pt_T);
 
     if ((p_L - p_C).Length2() > threshold2) {
-        auto cyl_L = chrono_types::make_shared<ChCylinderShape>();
-        cyl_L->GetCylinderGeometry().p1 = p_L;
-        cyl_L->GetCylinderGeometry().p2 = p_C;
-        cyl_L->GetCylinderGeometry().rad = radius;
-        upright->AddVisualShape(cyl_L);
+        ChVehicleGeometry::AddVisualizationCylinder(upright, p_L, p_C, radius);
     }
 
     if ((p_U - p_C).Length2() > threshold2) {
-        auto cyl_U = chrono_types::make_shared<ChCylinderShape>();
-        cyl_U->GetCylinderGeometry().p1 = p_U;
-        cyl_U->GetCylinderGeometry().p2 = p_C;
-        cyl_U->GetCylinderGeometry().rad = radius;
-        upright->AddVisualShape(cyl_U);
+        ChVehicleGeometry::AddVisualizationCylinder(upright, p_U, p_C, radius);
     }
 
     if ((p_T - p_C).Length2() > threshold2) {
-        auto cyl_T = chrono_types::make_shared<ChCylinderShape>();
-        cyl_T->GetCylinderGeometry().p1 = p_T;
-        cyl_T->GetCylinderGeometry().p2 = p_C;
-        cyl_T->GetCylinderGeometry().rad = radius;
-        upright->AddVisualShape(cyl_T);
+        ChVehicleGeometry::AddVisualizationCylinder(upright, p_T, p_C, radius);
     }
 }
 
@@ -597,11 +572,7 @@ void ChMacPhersonStrut::AddVisualizationTierod(std::shared_ptr<ChBody> tierod,
     ChVector<> p_C = tierod->TransformPointParentToLocal(pt_C);
     ChVector<> p_U = tierod->TransformPointParentToLocal(pt_U);
 
-    auto cyl = chrono_types::make_shared<ChCylinderShape>();
-    cyl->GetCylinderGeometry().p1 = p_C;
-    cyl->GetCylinderGeometry().p2 = p_U;
-    cyl->GetCylinderGeometry().rad = radius;
-    tierod->AddVisualShape(cyl);
+    ChVehicleGeometry::AddVisualizationCylinder(tierod, p_C, p_U, radius);
 }
 
 // -----------------------------------------------------------------------------
@@ -622,12 +593,12 @@ void ChMacPhersonStrut::ExportComponentList(rapidjson::Document& jsonDocument) c
         bodies.push_back(m_tierod[0]);
         bodies.push_back(m_tierod[1]);
     }
-    ChPart::ExportBodyList(jsonDocument, bodies);
+    ExportBodyList(jsonDocument, bodies);
 
     std::vector<std::shared_ptr<ChShaft>> shafts;
     shafts.push_back(m_axle[0]);
     shafts.push_back(m_axle[1]);
-    ChPart::ExportShaftList(jsonDocument, shafts);
+    ExportShaftList(jsonDocument, shafts);
 
     std::vector<std::shared_ptr<ChLink>> joints;
     std::vector<std::shared_ptr<ChLoadBodyBody>> bushings;
@@ -658,15 +629,15 @@ void ChMacPhersonStrut::ExportComponentList(rapidjson::Document& jsonDocument) c
         joints.push_back(m_distTierod[0]);
         joints.push_back(m_distTierod[1]);
     }
-    ChPart::ExportJointList(jsonDocument, joints);
-    ChPart::ExportBodyLoadList(jsonDocument, bushings);
+    ExportJointList(jsonDocument, joints);
+    ExportBodyLoadList(jsonDocument, bushings);
 
     std::vector<std::shared_ptr<ChLinkTSDA>> springs;
     springs.push_back(m_spring[0]);
     springs.push_back(m_spring[1]);
     springs.push_back(m_shock[0]);
     springs.push_back(m_shock[1]);
-    ChPart::ExportLinSpringList(jsonDocument, springs);
+    ExportLinSpringList(jsonDocument, springs);
 }
 
 void ChMacPhersonStrut::Output(ChVehicleOutput& database) const {

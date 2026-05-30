@@ -16,11 +16,16 @@
 
 namespace chrono {
 
-// Register into the object factory, to enable run-time
-// dynamic creation and persistence
+// Register into the object factory, to enable run-time dynamic creation and persistence
 CH_FACTORY_REGISTER(ChCylinderShape)
 
 ChCylinderShape::ChCylinderShape() {
+    SetMutable(false);
+}
+
+ChCylinderShape::ChCylinderShape(double radius, double height) {
+    gcylinder.r = radius;
+    gcylinder.h = height;
     SetMutable(false);
 }
 
@@ -28,20 +33,20 @@ ChCylinderShape::ChCylinderShape(const geometry::ChCylinder& cyl) : gcylinder(cy
     SetMutable(false);
 }
 
-void ChCylinderShape::ArchiveOUT(ChArchiveOut& marchive) {
+void ChCylinderShape::ArchiveOut(ChArchiveOut& marchive) {
     // version number
     marchive.VersionWrite<ChCylinderShape>();
     // serialize parent class
-    ChVisualShape::ArchiveOUT(marchive);
+    ChVisualShape::ArchiveOut(marchive);
     // serialize all member data:
     marchive << CHNVP(gcylinder);
 }
 
-void ChCylinderShape::ArchiveIN(ChArchiveIn& marchive) {
+void ChCylinderShape::ArchiveIn(ChArchiveIn& marchive) {
     // version number
     /*int version =*/ marchive.VersionRead<ChCylinderShape>();
     // deserialize parent class
-    ChVisualShape::ArchiveIN(marchive);
+    ChVisualShape::ArchiveIn(marchive);
     // stream in all member data:
     marchive >> CHNVP(gcylinder);
 }

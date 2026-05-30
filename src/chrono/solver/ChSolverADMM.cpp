@@ -65,9 +65,9 @@ double ChSolverADMM::Solve(ChSystemDescriptor& sysd) {
 
 double ChSolverADMM::_SolveBasic(ChSystemDescriptor& sysd) {
 
-    ChTimer<> m_timer_convert;
-    ChTimer<> m_timer_factorize;
-    ChTimer<> m_timer_solve;
+    ChTimer m_timer_convert;
+    ChTimer m_timer_factorize;
+    ChTimer m_timer_solve;
 
     double rho_i = this->rho;
 
@@ -408,7 +408,7 @@ double ChSolverADMM::_SolveBasic(ChSystemDescriptor& sysd) {
 
             if ((rhofactor > this->stepadjust_threshold) || (rhofactor < 1.0 / this->stepadjust_threshold)) {
 
-                ChTimer<> m_timer_refactorize;
+                ChTimer m_timer_refactorize;
                 m_timer_refactorize.start();
 
                 // Avoid rebuilding all sparse matrix: 
@@ -475,9 +475,9 @@ double ChSolverADMM::_SolveFast(ChSystemDescriptor& sysd) {
     double c_k = 1e10;
     double eta = 0.9999;
 
-    ChTimer<> m_timer_convert;
-    ChTimer<> m_timer_factorize;
-    ChTimer<> m_timer_solve;
+    ChTimer m_timer_convert;
+    ChTimer m_timer_factorize;
+    ChTimer m_timer_solve;
 
     double rho_i = this->rho;
 
@@ -832,7 +832,7 @@ double ChSolverADMM::_SolveFast(ChSystemDescriptor& sysd) {
 
             if ((rhofactor > this->stepadjust_threshold) || (rhofactor < 1.0 / this->stepadjust_threshold)) {
 
-                ChTimer<> m_timer_refactorize;
+                ChTimer m_timer_refactorize;
                 m_timer_refactorize.start();
 
                 // Avoid rebuilding all sparse matrix: 
@@ -902,11 +902,11 @@ class my_enum_mappers : public ChSolverADMM {
     CH_ENUM_MAPPER_END(AdmmStepType);
 };
 
-void ChSolverADMM::ArchiveOUT(ChArchiveOut& marchive) {
+void ChSolverADMM::ArchiveOut(ChArchiveOut& marchive) {
     // version number
     marchive.VersionWrite<ChSolverADMM>();
     // serialize parent class
-    ChIterativeSolverVI::ArchiveOUT(marchive);
+    ChIterativeSolverVI::ArchiveOut(marchive);
     // serialize all member data:
     marchive << CHNVP(precond);
     marchive << CHNVP(rho);
@@ -921,11 +921,11 @@ void ChSolverADMM::ArchiveOUT(ChArchiveOut& marchive) {
     marchive << CHNVP(mmapper(this->stepadjust_type), "stepadjust_type");
 }
 
-void ChSolverADMM::ArchiveIN(ChArchiveIn& marchive) {
+void ChSolverADMM::ArchiveIn(ChArchiveIn& marchive) {
     // version number
     /*int version =*/ marchive.VersionRead<ChSolverADMM>();
     // deserialize parent class
-    ChIterativeSolverVI::ArchiveIN(marchive);
+    ChIterativeSolverVI::ArchiveIn(marchive);
     // stream in all member data:
     marchive >> CHNVP(precond);
     marchive >> CHNVP(rho);

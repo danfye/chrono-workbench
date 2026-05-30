@@ -84,7 +84,8 @@ void ChVisualShape::SetTexture(const std::string& filename, float scale_x, float
     else if (material_list[0] == ChVisualMaterial::Default())
         material_list[0] = std::make_shared<ChVisualMaterial>(*ChVisualMaterial::Default());
 
-    material_list[0]->SetKdTexture(filename, scale_x, scale_y);
+    material_list[0]->SetKdTexture(filename);
+    material_list[0]->SetTextureScale(scale_x, scale_y);
 }
 
 std::string ChVisualShape::GetTexture() const {
@@ -93,18 +94,37 @@ std::string ChVisualShape::GetTexture() const {
     return material_list[0]->GetKdTexture();
 }
 
-void ChVisualShape::ArchiveOUT(ChArchiveOut& marchive) {
+void ChVisualShape::ArchiveOut(ChArchiveOut& marchive) {
     // version number
     marchive.VersionWrite<ChVisualShape>();
     // serialize all member data:
     marchive << CHNVP(visible);
+    marchive << CHNVP(is_mutable);
+    marchive << CHNVP(material_list);
 }
 
-void ChVisualShape::ArchiveIN(ChArchiveIn& marchive) {
+void ChVisualShape::ArchiveIn(ChArchiveIn& marchive) {
     // version number
     /*int version =*/ marchive.VersionRead<ChVisualShape>();
     // stream in all member data:
     marchive >> CHNVP(visible);
+    marchive >> CHNVP(is_mutable);
+    marchive >> CHNVP(material_list);
+
+    
+    // INITIALIZATION-BY-METHODS
+    if (marchive.CanTolerateMissingTokens()){
+        bool temp_tolerate_missing_tokens = marchive.GetTolerateMissingTokens();
+        marchive.TryTolerateMissingTokens(true);
+
+        ChColor _c_SetColor;
+        if (marchive.in(CHNVP(_c_SetColor)))
+            this->SetColor(_c_SetColor);
+
+
+        marchive.TryTolerateMissingTokens(temp_tolerate_missing_tokens);
+    }
+
 }
 
 }  // namespace chrono

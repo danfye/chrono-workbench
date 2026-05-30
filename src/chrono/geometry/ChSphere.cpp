@@ -26,29 +26,28 @@ ChSphere::ChSphere(const ChSphere& source) {
     rad = source.rad;
 }
 
-void ChSphere::GetBoundingBox(ChVector<>& cmin, ChVector<>& cmax, const ChMatrix33<>& rot) const {
-    cmin = ChVector<>(-rad);
-    cmax = ChVector<>(+rad);
+ChGeometry::AABB ChSphere::GetBoundingBox(const ChMatrix33<>& rot) const {
+    return AABB(ChVector<>(-rad), ChVector<>(+rad));
 }
 
 double ChSphere::GetBoundingSphereRadius() const {
     return rad;
 }
 
-void ChSphere::ArchiveOUT(ChArchiveOut& marchive) {
+void ChSphere::ArchiveOut(ChArchiveOut& marchive) {
     // version number
     marchive.VersionWrite<ChSphere>();
     // serialize parent class
-    ChGeometry::ArchiveOUT(marchive);
+    ChGeometry::ArchiveOut(marchive);
     // serialize all member data:
     marchive << CHNVP(rad);
 }
 
-void ChSphere::ArchiveIN(ChArchiveIn& marchive) {
+void ChSphere::ArchiveIn(ChArchiveIn& marchive) {
     // version number
-    /*int version =*/ marchive.VersionRead();
+    /*int version =*/marchive.VersionRead();
     // deserialize parent class
-    ChGeometry::ArchiveIN(marchive);
+    ChGeometry::ArchiveIn(marchive);
     // stream in all member data:
     marchive >> CHNVP(rad);
 }

@@ -63,6 +63,9 @@ class CH_VEHICLE_API ChPart {
     /// Get the name of the vehicle subsystem template.
     virtual std::string GetTemplateName() const = 0;
 
+    /// Return flag indicating whether or not the part is fully constructed.
+    bool IsInitialized() const { return m_initialized; }
+
     /// Get the subsystem mass.
     /// Note that the correct value is reported only *after* the subsystem is initialized.
     double GetMass() const { return m_mass; }
@@ -89,7 +92,7 @@ class CH_VEHICLE_API ChPart {
 
     /// Set the visualization mode for this subsystem.
     void SetVisualizationType(VisualizationType vis);
-   
+
     /// Add visualization assets to this subsystem, for the specified visualization mode.
     virtual void AddVisualizationAssets(VisualizationType vis) {}
 
@@ -119,7 +122,7 @@ class CH_VEHICLE_API ChPart {
         const ChVector<>& products,       ///< products of inertia in vehicle-aligned centroidal frame
         const ChMatrix33<>& vehicle_rot,  ///< vehicle absolute orientation matrix
         const ChMatrix33<>& body_rot      ///< body absolute orientation matrix
-        );
+    );
 
   protected:
     /// Construct a vehicle subsystem with the specified name.
@@ -153,31 +156,30 @@ class CH_VEHICLE_API ChPart {
     virtual void Create(const rapidjson::Document& d);
 
     /// Export the list of bodies to the specified JSON document.
-    static void ExportBodyList(rapidjson::Document& jsonDocument, std::vector<std::shared_ptr<ChBody>> bodies);
+    void ExportBodyList(rapidjson::Document& jsonDocument, std::vector<std::shared_ptr<ChBody>> bodies) const;
 
     /// Export the list of shafts to the specified JSON document.
-    static void ExportShaftList(rapidjson::Document& jsonDocument, std::vector<std::shared_ptr<ChShaft>> shafts);
+    void ExportShaftList(rapidjson::Document& jsonDocument, std::vector<std::shared_ptr<ChShaft>> shafts) const;
 
     /// Export the list of joints to the specified JSON document.
-    static void ExportJointList(rapidjson::Document& jsonDocument, std::vector<std::shared_ptr<ChLink>> joints);
+    void ExportJointList(rapidjson::Document& jsonDocument, std::vector<std::shared_ptr<ChLink>> joints) const;
 
     /// Export the list of shaft couples to the specified JSON document.
-    static void ExportCouplesList(rapidjson::Document& jsonDocument, std::vector<std::shared_ptr<ChShaftsCouple>> couples);
+    void ExportCouplesList(rapidjson::Document& jsonDocument,
+                           std::vector<std::shared_ptr<ChShaftsCouple>> couples) const;
 
     /// Export the list of markers to the specified JSON document.
-    static void ExportMarkerList(rapidjson::Document& jsonDocument, std::vector<std::shared_ptr<ChMarker>> markers);
+    void ExportMarkerList(rapidjson::Document& jsonDocument, std::vector<std::shared_ptr<ChMarker>> markers) const;
 
     /// Export the list of translational springs to the specified JSON document.
-    static void ExportLinSpringList(rapidjson::Document& jsonDocument,
-                                    std::vector<std::shared_ptr<ChLinkTSDA>> springs);
+    void ExportLinSpringList(rapidjson::Document& jsonDocument, std::vector<std::shared_ptr<ChLinkTSDA>> springs) const;
 
     /// Export the list of rotational springs to the specified JSON document.
-    static void ExportRotSpringList(rapidjson::Document& jsonDocument,
-                                    std::vector<std::shared_ptr<ChLinkRSDA>> springs);
+    void ExportRotSpringList(rapidjson::Document& jsonDocument, std::vector<std::shared_ptr<ChLinkRSDA>> springs) const;
 
     /// Export the list of body-body loads to the specified JSON document.
-    static void ExportBodyLoadList(rapidjson::Document& jsonDocument,
-                                   std::vector<std::shared_ptr<ChLoadBodyBody>> loads);
+    void ExportBodyLoadList(rapidjson::Document& jsonDocument,
+                            std::vector<std::shared_ptr<ChLoadBodyBody>> loads) const;
 
     /// Erase all visual shapes from the visual model associated with the specified physics item (if any).
     static void RemoveVisualizationAssets(std::shared_ptr<ChPhysicsItem> item);
@@ -186,6 +188,7 @@ class CH_VEHICLE_API ChPart {
     static void RemoveVisualizationAsset(std::shared_ptr<ChPhysicsItem> item, std::shared_ptr<ChVisualShape> shape);
 
     std::string m_name;  ///< subsystem name
+    bool m_initialized;  ///< specifies whether ot not the part is fully constructed
     bool m_output;       ///< specifies whether or not output is generated for this subsystem
 
     std::shared_ptr<ChPart> m_parent;  ///< parent subsystem (empty if parent is vehicle)

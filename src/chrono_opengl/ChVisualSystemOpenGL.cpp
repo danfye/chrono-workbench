@@ -34,8 +34,11 @@ ChVisualSystemOpenGL::ChVisualSystemOpenGL()
       m_camera_scale(0.5f),
       m_camera_near(0.1f),
       m_camera_far(1000.0f),
+      m_particle_render_mode(RenderMode::POINTS),
+      m_particle_radius(0.1f),
       particle_selector(nullptr),
-      render_stats(true) {
+      render_stats(true),
+      m_verbose(true) {
     stats_renderer = chrono_types::make_shared<ChOpenGLStatsDefault>();
 }
 
@@ -55,13 +58,38 @@ void ChVisualSystemOpenGL::SetWindowTitle(const std::string& win_title) {
     m_win_title = win_title;
 }
 
-void ChVisualSystemOpenGL::SetCameraPosition(const ChVector<>& pos, ChVector<> targ) {
+int ChVisualSystemOpenGL::AddCamera(const ChVector<>& pos, ChVector<> target) {
     m_camera_pos = pos;
-    m_camera_targ = targ;
+    m_camera_targ = target;
     if (viewer) {
         viewer->render_camera.camera_position = glm::vec3(m_camera_pos.x(), m_camera_pos.y(), m_camera_pos.z());
         viewer->render_camera.camera_look_at = glm::vec3(m_camera_targ.x(), m_camera_targ.y(), m_camera_targ.z());
     }
+    return 0;
+}
+
+void ChVisualSystemOpenGL::SetCameraPosition(int id, const ChVector<>& pos) {
+    m_camera_pos = pos;
+    if (viewer)
+        viewer->render_camera.camera_position = glm::vec3(m_camera_pos.x(), m_camera_pos.y(), m_camera_pos.z());
+}
+
+void ChVisualSystemOpenGL::SetCameraTarget(int id, const ChVector<>& target) {
+    m_camera_targ = target;
+    if (viewer)
+        viewer->render_camera.camera_look_at = glm::vec3(m_camera_targ.x(), m_camera_targ.y(), m_camera_targ.z());
+}
+
+void ChVisualSystemOpenGL::SetCameraPosition(const ChVector<>& pos) {
+    m_camera_pos = pos;
+    if (viewer)
+        viewer->render_camera.camera_position = glm::vec3(m_camera_pos.x(), m_camera_pos.y(), m_camera_pos.z());
+}
+
+void ChVisualSystemOpenGL::SetCameraTarget(const ChVector<>& target) {
+    m_camera_targ = target;
+    if (viewer)
+        viewer->render_camera.camera_look_at = glm::vec3(m_camera_targ.x(), m_camera_targ.y(), m_camera_targ.z());
 }
 
 void ChVisualSystemOpenGL::SetCameraVertical(CameraVerticalDir vert) {
@@ -94,13 +122,12 @@ void ChVisualSystemOpenGL::SetRenderMode(RenderMode mode) {
         viewer->render_mode = m_solid_mode;
 }
 
-void ChVisualSystemOpenGL::SetParticleRenderMode(float radius, RenderMode mode) {
+void ChVisualSystemOpenGL::SetParticleRenderMode(RenderMode mode, float radius) {
     m_particle_render_mode = mode;
     m_particle_radius = radius;
-
     if (viewer) {
-        viewer->particle_radius = m_particle_radius;
         viewer->particle_render_mode = m_particle_render_mode;
+        viewer->particle_radius = m_particle_radius;
     }
 }
 
@@ -131,8 +158,8 @@ void ChVisualSystemOpenGL::Initialize() {
     viewer->render_camera.SetClipping(m_camera_near, m_camera_far);
 
     viewer->render_mode = m_solid_mode;
-    viewer->particle_radius = m_particle_radius;
     viewer->particle_render_mode = m_particle_render_mode;
+    viewer->particle_radius = m_particle_radius;
 
     if (!glfwInit()) {
         std::cout << "could not initialize glfw- exiting" << std::endl;
@@ -177,7 +204,7 @@ void ChVisualSystemOpenGL::Initialize() {
     glfwSetCursorPosCallback(window, CallbackMousePos);
 
     GLReturnedError("Initialize GLEW");
-    GLFWGetVersion(window);
+    GLFWGetVersion(window, m_verbose);
 
     glfwGetFramebufferSize(window, &m_width, &m_height);
     if (m_height > 0) {
@@ -202,19 +229,22 @@ void ChVisualSystemOpenGL::Initialize() {
 
 // -----------------------------------------------------------------------------
 
-void ChVisualSystemOpenGL::GLFWGetVersion(GLFWwindow* main_window) {
+void ChVisualSystemOpenGL::GLFWGetVersion(GLFWwindow* main_window, bool verbose) {
     int major, minor, rev;
     major = glfwGetWindowAttrib(main_window, GLFW_CONTEXT_VERSION_MAJOR);
     minor = glfwGetWindowAttrib(main_window, GLFW_CONTEXT_VERSION_MINOR);
     rev = glfwGetWindowAttrib(main_window, GLFW_CONTEXT_REVISION);
-    fprintf(stdout, "Version: %d.%d.%d\n", major, minor, rev);
 
     const GLubyte* vendor = glGetString(GL_VENDOR);
     const GLubyte* renderer = glGetString(GL_RENDERER);
     const GLubyte* version = glGetString(GL_VERSION);
     const GLubyte* glsl_ver = glGetString(GL_SHADING_LANGUAGE_VERSION);
 
-    printf("%s : %s (%s)\n >> GLSL: %s\n", vendor, renderer, version, glsl_ver);
+    if (verbose) {
+        printf("Version: %d.%d.%d\n", major, minor, rev);
+        printf("%s : %s (%s)\n", vendor, renderer, version);
+        printf("GLSL: %s\n", glsl_ver);
+    }
 }
 
 void ChVisualSystemOpenGL::CallbackError(int error, const char* description) {
@@ -250,7 +280,7 @@ void ChVisualSystemOpenGL::CallbackKeyboard(GLFWwindow* window, int key, int sca
     }
 
     if (action == GLFW_PRESS || action == GLFW_REPEAT) {
-        for (auto ue : vsGL->user_receivers) {
+        for (auto& ue : vsGL->user_receivers) {
             if (ue->CallbackKeyboard(window, key, scancode, action, mode))
                 return;
         }
@@ -262,7 +292,7 @@ void ChVisualSystemOpenGL::CallbackKeyboard(GLFWwindow* window, int key, int sca
 void ChVisualSystemOpenGL::CallbackMouseButton(GLFWwindow* window, int button, int state, int mods) {
     ChVisualSystemOpenGL* vsGL = (ChVisualSystemOpenGL*)glfwGetWindowUserPointer(window);
 
-    for (auto ue : vsGL->user_receivers) {
+    for (auto& ue : vsGL->user_receivers) {
         if (ue->CallbackMouseButton(window, button, state, mods))
             return;
     }
@@ -275,7 +305,7 @@ void ChVisualSystemOpenGL::CallbackMouseButton(GLFWwindow* window, int button, i
 void ChVisualSystemOpenGL::CallbackMousePos(GLFWwindow* window, double x, double y) {
     ChVisualSystemOpenGL* vsGL = (ChVisualSystemOpenGL*)glfwGetWindowUserPointer(window);
 
-    for (auto ue : vsGL->user_receivers) {
+    for (auto& ue : vsGL->user_receivers) {
         if (ue->CallbackMousePos(window, x, y))
             return;
     }
@@ -303,8 +333,6 @@ bool ChVisualSystemOpenGL::Run() {
 
 // -----------------------------------------------------------------------------
 
-void ChVisualSystemOpenGL::BeginScene(bool backBuffer, bool zBuffer, ChColor color) {}
-
 void ChVisualSystemOpenGL::Render() {
     glEnable(GL_BLEND);
     glEnable(GL_DEPTH_TEST);
@@ -318,8 +346,6 @@ void ChVisualSystemOpenGL::Render() {
     glfwSwapBuffers(window);
     glfwPollEvents();
 }
-
-void ChVisualSystemOpenGL::EndScene() {}
 
 // -----------------------------------------------------------------------------
 

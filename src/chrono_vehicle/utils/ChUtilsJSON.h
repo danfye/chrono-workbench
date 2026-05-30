@@ -19,13 +19,18 @@
 #ifndef CH_JSON_UTILS_H
 #define CH_JSON_UTILS_H
 
+#include <vector>
+
 #include "chrono/assets/ChColor.h"
 #include "chrono/core/ChQuaternion.h"
 #include "chrono/core/ChVector.h"
 
+#include "chrono/motion_functions/ChFunction_Recorder.h"
+
 #include "chrono_vehicle/ChApiVehicle.h"
 #include "chrono_vehicle/ChChassis.h"
-#include "chrono_vehicle/ChPowertrain.h"
+#include "chrono_vehicle/ChEngine.h"
+#include "chrono_vehicle/ChTransmission.h"
 
 #include "chrono_vehicle/wheeled_vehicle/ChAntirollBar.h"
 #include "chrono_vehicle/wheeled_vehicle/ChBrake.h"
@@ -58,6 +63,9 @@ CH_VEHICLE_API ChVector<> ReadVectorJSON(const rapidjson::Value& a);
 ///  Load and return a ChQuaternion from the specified JSON array
 CH_VEHICLE_API ChQuaternion<> ReadQuaternionJSON(const rapidjson::Value& a);
 
+/// Load and return a coordinate system from the specific JSON value.
+CH_VEHICLE_API ChCoordsys<> ReadCoordinateSystemJSON(const rapidjson::Value& a);
+
 ///  Load and return a ChColor from the specified JSON array
 CH_VEHICLE_API ChColor ReadColorJSON(const rapidjson::Value& a);
 
@@ -66,6 +74,26 @@ CH_VEHICLE_API ChColor ReadColorJSON(const rapidjson::Value& a);
 CH_VEHICLE_API ChContactMaterialData ReadMaterialInfoJSON(const rapidjson::Value& mat);
 
 CH_VEHICLE_API std::shared_ptr<ChVehicleBushingData> ReadBushingDataJSON(const rapidjson::Value& bd);
+
+/// Load and return a vehicle joint type from the specific JSON value.
+CH_VEHICLE_API ChVehicleJoint::Type ReadVehicleJointTypeJSON(const rapidjson::Value& a);
+
+// -----------------------------------------------------------------------------
+
+/// Load and return a vehicle geometry structure from the specified JSON value.
+/// Collision geometry and contact material information is set in the return ChVehicleGeometry object if the given JSON
+/// object has a member "Contact". Visualization geometry is loaded if the JSON object has a member "Visualization".
+CH_VEHICLE_API ChVehicleGeometry ReadVehicleGeometryJSON(const rapidjson::Value& d);
+
+/// Load and return a TSDA geometry structure from the specified JSON value.
+CH_VEHICLE_API ChTSDAGeometry ReadTSDAGeometryJSON(const rapidjson::Value& d);
+
+// -----------------------------------------------------------------------------
+
+CH_VEHICLE_API std::shared_ptr<ChLinkTSDA::ForceFunctor> ReadTSDAFunctorJSON(const rapidjson::Value& td,
+                                                                             double& free_length);
+CH_VEHICLE_API std::shared_ptr<ChLinkRSDA::TorqueFunctor> ReadRSDAFunctorJSON(const rapidjson::Value& td,
+                                                                              double& free_angle);
 
 // -----------------------------------------------------------------------------
 
@@ -78,8 +106,11 @@ CH_VEHICLE_API std::shared_ptr<ChChassisRear> ReadChassisRearJSON(const std::str
 /// Load and return a chassis connector subsystem from the specified JSON file.
 CH_VEHICLE_API std::shared_ptr<ChChassisConnector> ReadChassisConnectorJSON(const std::string& filename);
 
-/// Load and return a powertrain subsystem from the specified JSON file.
-CH_VEHICLE_API std::shared_ptr<ChPowertrain> ReadPowertrainJSON(const std::string& filename);
+/// Load and return an engine subsystem from the specified JSON file.
+CH_VEHICLE_API std::shared_ptr<ChEngine> ReadEngineJSON(const std::string& filename);
+
+/// Load and return a transmission subsystem from the specified JSON file.
+CH_VEHICLE_API std::shared_ptr<ChTransmission> ReadTransmissionJSON(const std::string& filename);
 
 // -----------------------------------------------------------------------------
 
@@ -128,6 +159,31 @@ CH_VEHICLE_API std::shared_ptr<ChTrackSuspension> ReadTrackSuspensionJSON(const 
 
 /// Load and return a road-wheel from the specified JSON file.
 CH_VEHICLE_API std::shared_ptr<ChTrackWheel> ReadTrackWheelJSON(const std::string& filename);
+
+// -----------------------------------------------------------------------------
+
+/// Utility class for reading and setting an (x,y) map.
+class CH_VEHICLE_API ChMapData {
+  public:
+    /// Construct a ChMapData with an empty map.
+    ChMapData() : m_n(0) {}
+
+    /// Read data from the specified JSON object.
+    void Read(const rapidjson::Value& a);
+
+    /// Set the map data to the specified recorder function.
+    /// The map data is scaled by the specified factors.
+    void Set(ChFunction_Recorder& map, double x_factor = 1, double y_factor = 1) const;
+
+    /// Set the map data to the specified vector of pairs.
+    /// The map data is scaled by the specified factors.
+    void Set(std::vector<std::pair<double, double>>& vec, double x_factor = 1, double y_factor = 1) const;
+
+  private:
+    unsigned int m_n;
+    std::vector<double> m_x;
+    std::vector<double> m_y;
+};
 
 }  // end namespace vehicle
 }  // end namespace chrono

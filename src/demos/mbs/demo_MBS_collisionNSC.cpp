@@ -23,15 +23,24 @@
 #include "chrono/physics/ChLinkMotorRotationSpeed.h"
 #include "chrono/assets/ChTexture.h"
 #include "chrono/core/ChRealtimeStep.h"
+
 #ifdef CHRONO_COLLISION
     #include "chrono/collision/ChCollisionSystemChrono.h"
 #endif
 
-#include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
-
-// Use the namespaces of Chrono
-using namespace chrono;
+#ifdef CHRONO_IRRLICHT
+    #include "chrono_irrlicht/ChVisualSystemIrrlicht.h"
 using namespace chrono::irrlicht;
+#endif
+
+#ifdef CHRONO_VSG
+    #include "chrono_vsg/ChVisualSystemVSG.h"
+using namespace chrono::vsg3d;
+#endif
+
+using namespace chrono;
+
+ChVisualSystem::Type vis_type = ChVisualSystem::Type::VSG;
 
 collision::ChCollisionSystemType collision_type = collision::ChCollisionSystemType::BULLET;
 
@@ -60,9 +69,10 @@ void AddFallingItems(ChSystemNSC& sys) {
         boxBody->GetVisualShape(0)->SetTexture(GetChronoDataFile("textures/cubetexture_bluewhite.png"));
         sys.Add(boxBody);
 
-        auto cylBody = chrono_types::make_shared<ChBodyEasyCylinder>(0.75, 0.5,  // radius, height
-                                                                     100,        // density
-                                                                     cyl_mat,    // contact material
+        auto cylBody = chrono_types::make_shared<ChBodyEasyCylinder>(geometry::ChAxis::Y,  //
+                                                                     0.75, 0.5,            // radius, height
+                                                                     100,                  // density
+                                                                     cyl_mat,              // contact material
                                                                      collision_type);
         cylBody->SetPos(ChVector<>(-5 + ChRandom() * 10, 4 + bi * 0.05, -5 + ChRandom() * 10));
         cylBody->GetVisualShape(0)->SetTexture(GetChronoDataFile("textures/pinkwhite.png"));
@@ -127,31 +137,6 @@ std::shared_ptr<ChBody> AddContainer(ChSystemNSC& sys) {
     my_motor->SetSpeedFunction(mfun);
     sys.AddLink(my_motor);
 
-    /// NOTE: Instead of creating five separate 'box' bodies to make
-    /// the walls of the container, you could have used a single body
-    /// made of five box shapes, which build a single collision description,
-    /// as in the alternative approach:
-
-    /*
-    // create a plain ChBody (no colliding shape nor visualization mesh is used yet)
-    auto rigidBody = chrono_types::make_shared<ChBody>(collision_type);
-
-    // set as fixed body, and turn collision ON, otherwise no collide by default
-    rigidBody->SetBodyFixed(true);
-    rigidBody->SetCollide(true);
-
-    // Clear model. The colliding shape description MUST be between  ClearModel() .. BuildModel() pair.
-    rigidBody->GetCollisionModel()->ClearModel();
-    // Describe the (invisible) colliding shape by adding five boxes (the walls and floor)
-    rigidBody->GetCollisionModel()->AddBox(ground_mat, 20, 1, 20, ChVector<>(0, -10, 0));
-    rigidBody->GetCollisionModel()->AddBox(ground_mat, 1, 40, 20, ChVector<>(-11, 0, 0));
-    rigidBody->GetCollisionModel()->AddBox(ground_mat, 1, 40, 20, ChVector<>(11, 0, 0));
-    rigidBody->GetCollisionModel()->AddBox(ground_mat, 20, 40, 1, ChVector<>(0, 0, -11));
-    rigidBody->GetCollisionModel()->AddBox(ground_mat, 20, 40, 1, ChVector<>(0, 0, 11));
-    // Complete the description of collision shape.
-    rigidBody->GetCollisionModel()->BuildModel();
-    */
-
     return rotatingBody;
 }
 
@@ -182,16 +167,57 @@ int main(int argc, char* argv[]) {
     auto mixer = AddContainer(sys);
     AddFallingItems(sys);
 
-    // Create the Irrlicht visualization system
-    auto vis = chrono_types::make_shared<ChVisualSystemIrrlicht>();
-    vis->AttachSystem(&sys);
-    vis->SetWindowSize(800, 600);
-    vis->SetWindowTitle("NSC collision demo");
-    vis->Initialize();
-    vis->AddLogo();
-    vis->AddSkyBox();
-    vis->AddCamera(ChVector<>(0, 14, -20));
-    vis->AddTypicalLights();
+    // Create the run-time visualization system
+#ifndef CHRONO_IRRLICHT
+    if (vis_type == ChVisualSystem::Type::IRRLICHT)
+        vis_type = ChVisualSystem::Type::VSG;
+#endif
+#ifndef CHRONO_VSG
+    if (vis_type == ChVisualSystem::Type::VSG)
+        vis_type = ChVisualSystem::Type::IRRLICHT;
+#endif
+
+    std::shared_ptr<ChVisualSystem> vis;
+    switch (vis_type) {
+        case ChVisualSystem::Type::IRRLICHT: {
+#ifdef CHRONO_IRRLICHT
+            auto vis_irr = chrono_types::make_shared<ChVisualSystemIrrlicht>();
+            vis_irr->AttachSystem(&sys);
+            vis_irr->SetWindowSize(800, 600);
+            vis_irr->SetWindowTitle("NSC collision demo");
+            vis_irr->Initialize();
+            vis_irr->AddLogo();
+            vis_irr->AddSkyBox();
+            vis_irr->AddCamera(ChVector<>(0, 14, -20));
+            vis_irr->AddTypicalLights();
+
+            vis = vis_irr;
+#endif
+            break;
+        }
+        default:
+        case ChVisualSystem::Type::VSG: {
+#ifdef CHRONO_VSG
+            auto vis_vsg = chrono_types::make_shared<ChVisualSystemVSG>();
+            vis_vsg->AttachSystem(&sys);
+            vis_vsg->SetWindowTitle("SMC callbacks");
+            vis_vsg->AddCamera(ChVector<>(0, 18, -20));
+            vis_vsg->SetWindowSize(ChVector2<int>(800, 600));
+            vis_vsg->SetWindowPosition(ChVector2<int>(100, 100));
+            vis_vsg->SetClearColor(ChColor(0.8f, 0.85f, 0.9f));
+            vis_vsg->SetUseSkyBox(true);  // use built-in path
+            vis_vsg->SetCameraVertical(CameraVerticalDir::Y);
+            vis_vsg->SetCameraAngleDeg(40.0);
+            vis_vsg->SetLightIntensity(1.0f);
+            vis_vsg->SetLightDirection(1.5 * CH_C_PI_2, CH_C_PI_4);
+            vis_vsg->SetWireFrameMode(false);
+            vis_vsg->Initialize();
+
+            vis = vis_vsg;
+#endif
+            break;
+        }
+    }
 
     // Modify some setting of the physical system for the simulation, if you want
     sys.SetSolverType(ChSolver::Type::PSOR);

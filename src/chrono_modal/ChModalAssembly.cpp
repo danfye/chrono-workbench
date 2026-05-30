@@ -267,16 +267,16 @@ void ChModalAssembly::SwitchModalReductionON(ChSparseMatrix& full_M, ChSparseMat
     if (true) {
         ChStreamOutAsciiFile fileP("dump_modal_Psi.dat");
         fileP.SetNumFormat("%.12g");
-        StreamOUTdenseMatlabFormat(Psi, fileP);
+        StreamOutDenseMatlabFormat(Psi, fileP);
         ChStreamOutAsciiFile fileM("dump_modal_M.dat");
         fileM.SetNumFormat("%.12g");
-        StreamOUTdenseMatlabFormat(this->modal_M, fileM);
+        StreamOutDenseMatlabFormat(this->modal_M, fileM);
         ChStreamOutAsciiFile fileK("dump_modal_K.dat");
         fileK.SetNumFormat("%.12g");
-        StreamOUTdenseMatlabFormat(this->modal_K, fileK);
+        StreamOutDenseMatlabFormat(this->modal_K, fileK);
         ChStreamOutAsciiFile fileR("dump_modal_R.dat");
         fileR.SetNumFormat("%.12g");
-        StreamOUTdenseMatlabFormat(this->modal_R, fileR);
+        StreamOutDenseMatlabFormat(this->modal_R, fileR);
     }
 }
 
@@ -352,6 +352,7 @@ void ChModalAssembly::SetupModalData(int nmodes_reduction) {
 
 bool ChModalAssembly::ComputeModes(const ChModalSolveUndamped& n_modes_settings) {
 
+    m_timer_matrix_assembly.start();
     ChSparseMatrix full_M;
     ChSparseMatrix full_K;
     ChSparseMatrix full_Cq;
@@ -359,6 +360,9 @@ bool ChModalAssembly::ComputeModes(const ChModalSolveUndamped& n_modes_settings)
     this->GetSubassemblyMassMatrix(&full_M);
     this->GetSubassemblyStiffnessMatrix(&full_K);
     this->GetSubassemblyConstraintJacobianMatrix(&full_Cq);
+
+    m_timer_matrix_assembly.stop();
+
 
     // SOLVE EIGENVALUE
     this->ComputeModesExternalData(full_M, full_K, full_Cq, n_modes_settings);
@@ -368,6 +372,7 @@ bool ChModalAssembly::ComputeModes(const ChModalSolveUndamped& n_modes_settings)
 
 bool ChModalAssembly::ComputeModesExternalData(ChSparseMatrix& full_M, ChSparseMatrix& full_K, ChSparseMatrix& full_Cq, const ChModalSolveUndamped& n_modes_settings) {
 
+    m_timer_setup.start();
     this->SetupInitial();
     this->Setup();
     this->Update();
@@ -388,21 +393,31 @@ bool ChModalAssembly::ComputeModesExternalData(ChSparseMatrix& full_M, ChSparseM
     assert(full_K.rows()  == this->ncoords_w); 
     assert(full_Cq.cols() == this->ncoords_w); 
 
+    m_timer_setup.stop();
+
     // SOLVE EIGENVALUE 
     // for undamped system (use generalized constrained eigen solver)
     // - Must work with large dimension and sparse matrices only
     // - Must work also in free-free cases, with 6 rigid body modes at 0 frequency.
-
+    m_timer_modal_solver_call.start();
     n_modes_settings.Solve(full_M, full_K, full_Cq, this->modes_V, this->modes_eig, this->modes_freq);
+    m_timer_modal_solver_call.stop();
+
+    m_timer_setup.start();
 
     this->modes_damping_ratio.setZero(this->modes_freq.rows());
 
     this->Setup();
 
+    m_timer_setup.stop();
+
+
     return true;
 }
 
 bool ChModalAssembly::ComputeModesDamped(const ChModalSolveDamped& n_modes_settings) {
+
+    m_timer_setup.start();
 
     this->SetupInitial();
     this->Setup();
@@ -417,6 +432,10 @@ bool ChModalAssembly::ComputeModesDamped(const ChModalSolveDamped& n_modes_setti
 
     this->Setup();
 
+    m_timer_setup.stop();
+
+    m_timer_matrix_assembly.start();
+
     ChSparseMatrix full_M;
     ChSparseMatrix full_R;
     ChSparseMatrix full_K;
@@ -427,14 +446,20 @@ bool ChModalAssembly::ComputeModesDamped(const ChModalSolveDamped& n_modes_setti
     this->GetSubassemblyStiffnessMatrix(&full_K);
     this->GetSubassemblyConstraintJacobianMatrix(&full_Cq);
 
+    m_timer_matrix_assembly.stop();
+
+
     // SOLVE QUADRATIC EIGENVALUE 
     // for damped system (use quadratic constrained eigen solver)
     // - Must work with large dimension and sparse matrices only
     // - Must work also in free-free cases, with 6 rigid body modes at 0 frequency.
-    
+    m_timer_modal_solver_call.start();
     n_modes_settings.Solve(full_M, full_R, full_K, full_Cq, this->modes_V, this->modes_eig, this->modes_freq, this->modes_damping_ratio);
+    m_timer_modal_solver_call.stop();
 
+    m_timer_setup.start();
     this->Setup();
+    m_timer_setup.stop();
 
     return true;
 }
@@ -758,6 +783,7 @@ void ChModalAssembly::GetSubassemblyMassMatrix(ChSparseMatrix* M) {
 
     // Fill system-level M matrix
     temp_descriptor.ConvertToMatrixForm(nullptr, M, nullptr, nullptr, nullptr, nullptr, false, false);
+    //M->makeCompressed();
 }
 
 void ChModalAssembly::GetSubassemblyStiffnessMatrix(ChSparseMatrix* K) {
@@ -779,6 +805,7 @@ void ChModalAssembly::GetSubassemblyStiffnessMatrix(ChSparseMatrix* K) {
 
     // Fill system-level K matrix
     temp_descriptor.ConvertToMatrixForm(nullptr, K, nullptr, nullptr, nullptr, nullptr, false, false);
+    //K->makeCompressed();
 }
 
 void ChModalAssembly::GetSubassemblyDampingMatrix(ChSparseMatrix* R) {
@@ -800,6 +827,7 @@ void ChModalAssembly::GetSubassemblyDampingMatrix(ChSparseMatrix* R) {
 
     // Fill system-level R matrix
     temp_descriptor.ConvertToMatrixForm(nullptr, R, nullptr, nullptr, nullptr, nullptr, false, false);
+    //R->makeCompressed();
 
 }
 
@@ -820,6 +848,7 @@ void ChModalAssembly::GetSubassemblyConstraintJacobianMatrix(ChSparseMatrix* Cq)
 
     // Fill system-level R matrix
     temp_descriptor.ConvertToMatrixForm(Cq, nullptr, nullptr, nullptr, nullptr, nullptr, false, false);
+    //Cq->makeCompressed();
 }
 
 void ChModalAssembly::DumpSubassemblyMatrices(bool save_M, bool save_K, bool save_R, bool save_Cq, const char* path) {
@@ -832,7 +861,7 @@ void ChModalAssembly::DumpSubassemblyMatrices(bool save_M, bool save_K, bool sav
         sprintf(filename, "%s%s", path, "_M.dat");
         ChStreamOutAsciiFile file_M(filename);
         file_M.SetNumFormat(numformat);
-        StreamOUTsparseMatlabFormat(mM, file_M);
+        StreamOutSparseMatlabFormat(mM, file_M);
     }
     if (save_K) {
         ChSparseMatrix mK;
@@ -840,7 +869,7 @@ void ChModalAssembly::DumpSubassemblyMatrices(bool save_M, bool save_K, bool sav
         sprintf(filename, "%s%s", path, "_K.dat");
         ChStreamOutAsciiFile file_K(filename);
         file_K.SetNumFormat(numformat);
-        StreamOUTsparseMatlabFormat(mK, file_K);
+        StreamOutSparseMatlabFormat(mK, file_K);
     }
     if (save_R) {
         ChSparseMatrix mR;
@@ -848,7 +877,7 @@ void ChModalAssembly::DumpSubassemblyMatrices(bool save_M, bool save_K, bool sav
         sprintf(filename, "%s%s", path, "_R.dat");
         ChStreamOutAsciiFile file_R(filename);
         file_R.SetNumFormat(numformat);
-        StreamOUTsparseMatlabFormat(mR, file_R);
+        StreamOutSparseMatlabFormat(mR, file_R);
     }
     if (save_Cq) {
         ChSparseMatrix mCq;
@@ -856,7 +885,7 @@ void ChModalAssembly::DumpSubassemblyMatrices(bool save_M, bool save_K, bool sav
         sprintf(filename, "%s%s", path, "_Cq.dat");
         ChStreamOutAsciiFile file_Cq(filename);
         file_Cq.SetNumFormat(numformat);
-        StreamOUTsparseMatlabFormat(mCq, file_Cq);
+        StreamOutSparseMatlabFormat(mCq, file_Cq);
     }
 }
 
@@ -1800,12 +1829,12 @@ void ChModalAssembly::KRMmatricesLoad(double Kfactor, double Rfactor, double Mfa
 //  STREAMING - FILE HANDLING
 
 
-void ChModalAssembly::ArchiveOUT(ChArchiveOut& marchive) {
+void ChModalAssembly::ArchiveOut(ChArchiveOut& marchive) {
     // version number
     marchive.VersionWrite<ChModalAssembly>();
 
     // serialize parent class
-    ChAssembly::ArchiveOUT(marchive);
+    ChAssembly::ArchiveOut(marchive);
 
     // serialize all member data:
 
@@ -1822,12 +1851,12 @@ void ChModalAssembly::ArchiveOUT(ChArchiveOut& marchive) {
     marchive << CHNVP(internal_nodes_update, "internal_nodes_update");
 }
 
-void ChModalAssembly::ArchiveIN(ChArchiveIn& marchive) {
+void ChModalAssembly::ArchiveIn(ChArchiveIn& marchive) {
     // version number
     /*int version =*/ marchive.VersionRead<ChModalAssembly>();
 
     // deserialize parent class
-    ChAssembly::ArchiveIN(marchive);
+    ChAssembly::ArchiveIn(marchive);
 
     // stream in all member data:
     

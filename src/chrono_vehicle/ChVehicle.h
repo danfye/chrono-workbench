@@ -30,7 +30,7 @@
 #include "chrono_vehicle/ChSubsysDefs.h"
 #include "chrono_vehicle/ChVehicleOutput.h"
 #include "chrono_vehicle/ChChassis.h"
-#include "chrono_vehicle/ChPowertrain.h"
+#include "chrono_vehicle/ChPowertrainAssembly.h"
 
 namespace chrono {
 namespace vehicle {
@@ -80,7 +80,13 @@ class CH_VEHICLE_API ChVehicle {
     std::shared_ptr<ChBodyAuxRef> GetChassisRearBody(int id) const { return m_chassis_rear[id]->GetBody(); }
 
     /// Get the powertrain attached to this vehicle.
-    virtual std::shared_ptr<ChPowertrain> GetPowertrain() const { return nullptr; }
+    std::shared_ptr<ChPowertrainAssembly> GetPowertrainAssembly() const { return m_powertrain_assembly; }
+
+    /// Get the engine in the powertrain assembly (if a powertrain is attached).
+    std::shared_ptr<ChEngine> GetEngine() const;
+
+    /// Get the transmission in the powertrain assembly (if a powertrain is attached).
+    std::shared_ptr<ChTransmission> GetTransmission() const;
 
     /// Get the vehicle total mass.
     /// This includes the mass of the chassis and all vehicle subsystems.
@@ -125,9 +131,6 @@ class CH_VEHICLE_API ChVehicle {
     /// The returned acceleration is expressed in the chassis reference frame.
     ChVector<> GetPointAcceleration(const ChVector<>& locpos) const { return m_chassis->GetPointAcceleration(locpos); }
 
-    /// Get a handle to the vehicle's driveshaft body.
-    virtual std::shared_ptr<ChShaft> GetDriveshaft() const = 0;
-
     /// Get the global location of the driver.
     ChVector<> GetDriverPos() const { return m_chassis->GetDriverPos(); }
 
@@ -137,7 +140,7 @@ class CH_VEHICLE_API ChVehicle {
 
     /// Get current estimated RTF (real time factor).
     /// Note that the "true" RTF is returned, even if soft real-time is enforced.
-    double GetRTF() const { return m_RTF; }
+    double GetRTF() const;
 
     /// Change the default collision detection system.
     /// Note that this function should be called *before* initialization of the vehicle system in order to create
@@ -157,6 +160,10 @@ class CH_VEHICLE_API ChVehicle {
                             double chassisFwdVel = 0         ///< [in] initial chassis forward velocity
                             );
 
+    /// Initialize the given powertrain assembly and associate it to this vehicle.
+    /// The powertrain is initialized by connecting it to this vehicle's chassis and driveline shaft.
+    void InitializePowertrain(std::shared_ptr<ChPowertrainAssembly> powertrain);
+
     /// Calculate total vehicle mass from subsystems.
     /// This function is called at the end of the vehicle initialization, but can also be called explicitly.
     virtual void InitializeInertiaProperties() = 0;
@@ -167,13 +174,12 @@ class CH_VEHICLE_API ChVehicle {
     /// Set visualization mode for the rear chassis subsystems.
     void SetChassisRearVisualizationType(VisualizationType vis);
 
-    /// Enable/disable collision for the chassis subsystem. This function controls
-    /// contact of the chassis with all other collision shapes in the simulation.
+    /// Enable/disable collision for the chassis subsystem. 
+    /// This function controls contact of the chassis with all other collision shapes in the simulation.
     void SetChassisCollide(bool state);
 
-    /// Enable/disable collision between the chassis and all other vehicle
-    /// subsystems. Note that some of these collisions may be always disabled,
-    /// as set by the particular derived vehicle class.
+    /// Enable/disable collision between the chassis and all other vehicle subsystems. 
+    /// Note that some of these collisions may be always disabled, as set by the particular derived vehicle class.
     virtual void SetChassisVehicleCollide(bool state) {}
 
     /// Enable/disable output from the chassis subsystem.
@@ -246,11 +252,13 @@ class CH_VEHICLE_API ChVehicle {
     ChChassisRearList m_chassis_rear;             ///< list of rear chassis subsystems (can be empty)
     ChChassisConnectorList m_chassis_connectors;  ///< list of chassis connector (must match m_chassis_rear)
 
+    std::shared_ptr<ChPowertrainAssembly> m_powertrain_assembly;  ///< associated powertrain system
+
   private:
     bool m_initialized;
     bool m_realtime_force;
     ChRealtimeStepTimer m_realtime_timer;
-    ChTimer<> m_sim_timer;
+    ChTimer m_sim_timer;
     double m_RTF;
 
     friend class ChVehicleCosimWheeledVehicleNode;

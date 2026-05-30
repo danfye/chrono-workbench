@@ -43,6 +43,9 @@ struct traits<chrono::ChMatrixSPMV> : public Eigen::internal::traits<chrono::ChS
 
 namespace chrono {
 
+CH_UPCASTING(ChIterativeSolverLS, ChIterativeSolver)
+CH_UPCASTING(ChIterativeSolverLS, ChSolverLS)
+
 // Matrix-free wrapper from a user type to Eigen's compatible type.
 // We defer to the system descriptor to perform the SPMV operation.
 class ChMatrixSPMV : public Eigen::EigenBase<ChMatrixSPMV> {

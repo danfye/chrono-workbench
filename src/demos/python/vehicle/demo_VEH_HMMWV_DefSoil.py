@@ -54,7 +54,8 @@ def main():
     my_hmmwv = veh.HMMWV_Full()
     my_hmmwv.SetContactMethod(chrono.ChContactMethod_SMC)
     my_hmmwv.SetInitPosition(chrono.ChCoordsysD(chrono.ChVectorD(-5, -2, 0.6), chrono.ChQuaternionD(1, 0, 0, 0)))
-    my_hmmwv.SetPowertrainType(veh.PowertrainModelType_SHAFTS)
+    my_hmmwv.SetEngineType(veh.EngineModelType_SHAFTS);
+    my_hmmwv.SetTransmissionType(veh.TransmissionModelType_SHAFTS);
     my_hmmwv.SetDriveType(veh.DrivelineTypeWV_AWD)
     my_hmmwv.SetTireType(veh.TireModelType_RIGID)
     my_hmmwv.Initialize()
@@ -70,7 +71,7 @@ def main():
     driver.Initialize()
 
     # Create the SCM deformable terrain patch
-    terrain = veh.SCMDeformableTerrain(my_hmmwv.GetSystem())
+    terrain = veh.SCMTerrain(my_hmmwv.GetSystem())
     terrain.SetSoilParameters(2e6,   # Bekker Kphi
                               0,     # Bekker Kc
                               1.1,   # Bekker n exponent
@@ -85,7 +86,7 @@ def main():
     terrain.AddMovingPatch(my_hmmwv.GetChassisBody(), chrono.ChVectorD(0, 0, 0), chrono.ChVectorD(5, 3, 1))
 
     # Set plot type for SCM (false color plotting)
-    terrain.SetPlotType(veh.SCMDeformableTerrain.PLOT_SINKAGE, 0, 0.1);
+    terrain.SetPlotType(veh.SCMTerrain.PLOT_SINKAGE, 0, 0.1);
 
     # Initialize the SCM terrain, specifying the initial mesh grid
     terrain.Initialize(terrainLength, terrainWidth, delta);
@@ -122,7 +123,7 @@ def main():
         driver.Synchronize(time)
         terrain.Synchronize(time)
         my_hmmwv.Synchronize(time, driver_inputs, terrain)
-        vis.Synchronize("", driver_inputs)
+        vis.Synchronize(time, driver_inputs)
 
         # Advance simulation for one timestep for all modules
         driver.Advance(step_size)

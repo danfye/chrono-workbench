@@ -16,6 +16,7 @@
 #include "chrono/physics/ChPhysicsItem.h"
 
 namespace chrono {
+CH_FACTORY_REGISTER(ChVisualModel)
 
 void ChVisualModel::AddShape(std::shared_ptr<ChVisualShape> shape, const ChFrame<>& frame) {
     m_shapes.push_back({shape, frame});
@@ -47,6 +48,23 @@ void ChVisualModel::Update(ChPhysicsItem* owner, const ChFrame<>& frame) {
     for (auto& shapeFEA : m_shapesFEA) {
         shapeFEA->Update(owner, ChFrame<>());
     }
+}
+
+
+void ChVisualModel::ArchiveOut(ChArchiveOut& marchive) {
+    marchive.VersionWrite<ChVisualModel>();
+
+    marchive << CHNVP(m_shapes);
+    //marchive << CHNVP(m_shapesFEA); // TODO: DARIOM enable archive
+
+}
+
+void ChVisualModel::ArchiveIn(ChArchiveIn& marchive) {
+    /*int version =*/marchive.VersionRead<ChVisualModel>();
+
+    marchive >> CHNVP(m_shapes);
+    //marchive >> CHNVP(m_shapesFEA); // TODO: DARIOM enable archive
+
 }
 
 // -----------------------------------------------------------------------------

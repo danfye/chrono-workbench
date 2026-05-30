@@ -36,6 +36,9 @@
 #include "chrono/core/ChException.h"
 #include "chrono/solver/ChConstraintTuple.h"
 
+#include "chrono/physics/ChSystemNSC.h"
+#include "chrono/physics/ChLinkMotorRotationSpeed.h"
+
 #include "chrono_thirdparty/filesystem/path.h"
 
 using namespace chrono;
@@ -84,8 +87,8 @@ class myEmployee {
     // MEMBER FUNCTIONS FOR BINARY I/O
     // NOTE!!!In order to allow serialization with Chrono approach,
     // at least implement these two functions, with the exact names
-    // ArchiveIN() and ArchiveOUT():
-    virtual void ArchiveOUT(ChArchiveOut& marchive)  //##### for Chrono serialization
+    // ArchiveIn() and ArchiveOut():
+    virtual void ArchiveOut(ChArchiveOut& marchive)  //##### for Chrono serialization
     {
         // suggested: use versioning
         marchive.VersionWrite<myEmployee>();
@@ -96,7 +99,7 @@ class myEmployee {
         marchive << CHNVP(enum_map(body),
                           "body");  // note: CHNVP macro can override names used when streaming to ascii..
     }
-    virtual void ArchiveIN(ChArchiveIn& marchive)  // for Chrono serialization
+    virtual void ArchiveIn(ChArchiveIn& marchive)  // for Chrono serialization
     {
         // suggested: use versioning
         /*int version =*/marchive.VersionRead<myEmployee>();
@@ -132,23 +135,23 @@ class myEmployeeBoss : public myEmployee {
 
     // MEMBER FUNCTIONS FOR BINARY I/O
 
-    virtual void ArchiveOUT(ChArchiveOut& marchive)  //##### for Chrono serialization
+    virtual void ArchiveOut(ChArchiveOut& marchive)  //##### for Chrono serialization
     {
         // suggested: use versioning
         marchive.VersionWrite<myEmployeeBoss>();
         // remember to serialize the parent class data too!!!
-        myEmployee::ArchiveOUT(marchive);
+        myEmployee::ArchiveOut(marchive);
 
         // stream out member data
         marchive << CHNVP(is_dumb);
         marchive << CHNVP(slave);  // this added only from version >1
     }
-    virtual void ArchiveIN(ChArchiveIn& marchive)  // for Chrono serialization
+    virtual void ArchiveIn(ChArchiveIn& marchive)  // for Chrono serialization
     {
         // suggested: use versioning
         int version = marchive.VersionRead<myEmployeeBoss>();
         // remember to deserialize the parent class data too!!!
-        myEmployee::ArchiveIN(marchive);
+        myEmployee::ArchiveIn(marchive);
 
         // stream in member data
         marchive >> CHNVP(is_dumb);
@@ -167,7 +170,7 @@ CH_CLASS_VERSION(myEmployeeBoss, 2)
 
 // Finally, let's serialize a class that has no default constructor.
 // How to manage the (de)serialization of the initialization parameters?
-// The trick is adding two optional ArchiveOUTconstructor() and ArchiveINconstructor():
+// The trick is adding two optional ArchiveOutConstructor() and ArchiveInConstructor():
 
 class myEmployeeCustomConstructor : public myEmployee {
   public:
@@ -180,28 +183,28 @@ class myEmployeeCustomConstructor : public myEmployee {
 
     // MEMBER FUNCTIONS FOR BINARY I/O
 
-    virtual void ArchiveOUT(ChArchiveOut& marchive)  // for Chrono serialization
+    virtual void ArchiveOut(ChArchiveOut& marchive)  // for Chrono serialization
     {
         // suggested: use versioning
         marchive.VersionWrite<myEmployeeCustomConstructor>();
         // remember to serialize the parent class data too!!!
-        myEmployee::ArchiveOUT(marchive);
-        // stream out member data (except data used in constructor, already saved in ArchiveOUTconstructor)
+        myEmployee::ArchiveOut(marchive);
+        // stream out member data (except data used in constructor, already saved in ArchiveOutConstructor)
         marchive << CHNVP(legs);
     }
-    virtual void ArchiveIN(ChArchiveIn& marchive)  // for Chrono serialization
+    virtual void ArchiveIn(ChArchiveIn& marchive)  // for Chrono serialization
     {
         // suggested: use versioning
         /*int version =*/marchive.VersionRead<myEmployeeCustomConstructor>();
         // remember to deserialize the parent class data too!!!
-        myEmployee::ArchiveIN(marchive);
-        // stream in member data (except data used in constructor, already saved in ArchiveOUTconstructor)
+        myEmployee::ArchiveIn(marchive);
+        // stream in member data (except data used in constructor, already saved in ArchiveOutConstructor)
         marchive >> CHNVP(legs);
     }
 
-    // Add a  ArchiveOUTconstructor  function to deserialize the parameters
+    // Add a  ArchiveOutConstructor  function to deserialize the parameters
     // of the non-default constructor!!!
-    virtual void ArchiveOUTconstructor(ChArchiveOut& marchive) {
+    virtual void ArchiveOutConstructor(ChArchiveOut& marchive) {
         // suggested: use versioning
         marchive.VersionWrite<myEmployeeCustomConstructor>();
 
@@ -210,9 +213,9 @@ class myEmployeeCustomConstructor : public myEmployee {
         marchive << CHNVP(kids);
     }
 
-    // Add a  ArchiveINconstructor  static function to deserialize the parameters
+    // Add a  ArchiveInConstructor  static function to deserialize the parameters
     // of the non-default constructor!!!
-    static void* ArchiveINconstructor(ChArchiveIn& marchive) {
+    static void* ArchiveInConstructor(ChArchiveIn& marchive) {
         // suggested: use versioning
         /*int version =*/marchive.VersionRead<myEmployeeCustomConstructor>();
 
@@ -237,7 +240,7 @@ CH_FACTORY_REGISTER(myEmployeeCustomConstructor)  //  for advanced serialization
 // Example on how to serialize OUT some data:
 void my_serialization_example(ChArchiveOut& marchive) {
     // All basic primitives (strings, int,etc.), plus and objects that has
-    // an ArchiveOUT() function defined can be serialized in archives.
+    // an ArchiveOut() function defined can be serialized in archives.
 
     // Write from transient data into persistent binary file
     double m_double = 0.123456;
@@ -280,7 +283,7 @@ void my_serialization_example(ChArchiveOut& marchive) {
 
     // Also store a c++ object
     // In order to use this feature, the classes must implement
-    // ArchiveIN and ArchiveOUT functions.
+    // ArchiveIn and ArchiveOut functions.
     myEmployeeBoss m_boss(53, 12000.34, true);
     m_boss.body = FAT;
     marchive << CHNVP(m_boss);
@@ -289,7 +292,7 @@ void my_serialization_example(ChArchiveOut& marchive) {
     // One could have multiple pointers to the same object:
     // the serialization of pointers takes care of redundancy.
     // In order to use this feature, the classes must implement
-    // ArchiveIN and ArchiveOUT functions.
+    // ArchiveIn and ArchiveOut functions.
     ChVector<>* a_vect = new ChVector<>(1, 2, 3);
     marchive << CHNVP(a_vect);
     delete a_vect;
@@ -303,7 +306,7 @@ void my_serialization_example(ChArchiveOut& marchive) {
     // can be loaded later even if we do not know if it was an object of
     // class 'myEmployee' or specialized class 'myEmployeeBoss'...
     // In order to use this feature, classes must use the CH_FACTORY_REGISTER macros,
-    // and must implement ArchiveIN() and ArchiveOUT().
+    // and must implement ArchiveIn() and ArchiveOut().
     myEmployeeBoss* a_boss = new myEmployeeBoss(64, 22356, false);
     a_boss->slave.age = 24;
     marchive << CHNVP(a_boss);  //  object was referenced by pointer.
@@ -479,8 +482,50 @@ void my_deserialization_example(ChArchiveIn& marchive) {
     delete a_boss;
 }
 
+// Example on how to serialize OUT complex Chrono data: 
+// we will serialize a ChSystem including its children objects (bodies, links etc.)
+void my_system_serialization_example(ChArchiveOut& marchive) {
+
+    // ..create a system:
+    ChSystemNSC sys;
+
+    // ..create a truss
+    auto my_body_A = chrono_types::make_shared<ChBody>();
+    sys.AddBody(my_body_A);
+    my_body_A->SetBodyFixed(true);  // truss does not move!
+
+    // ..create a flywheel
+    auto my_body_B = chrono_types::make_shared<ChBody>();
+    sys.AddBody(my_body_B);
+    my_body_B->SetPos(ChVector<>(0, 0, 0)); 
+
+    // ..create a constraint, i.e. a motor between flywheel and truss:
+    auto my_link_AB = chrono_types::make_shared<ChLinkMotorRotationSpeed>();
+    my_link_AB->Initialize(my_body_A, my_body_B, ChFrame<>(ChVector<>(0, 0, 0)));
+    sys.AddLink(my_link_AB);
+    auto my_speed_function = chrono_types::make_shared<ChFunction_Const>(CH_C_PI);  // speed w=3.145 rad/sec
+    my_link_AB->SetSpeedFunction(my_speed_function);
+
+    // Serialize all the physical system (including bodies, links etc.),
+    // it takes just a single line:
+    marchive << CHNVP(sys); 
+}
+
+
+// Example on how to serialize IN complex Chrono data:
+// we will deserialize a ChSystem including its children objects (bodies, links etc.)
+void my_system_deserialization_example(ChArchiveIn& marchive) {
+
+    ChSystemNSC sys;
+
+    // deserialize all the physical system (including bodies, links etc.),
+    // it takes just a single line:
+    marchive >> CHNVP(sys);  
+}
+
+
 // Example on how to use reflection (c++ introspection) to explore the properties exposed
-// through the ArchiveIN() and ArchiveOUT() functions.
+// through the ArchiveIn() and ArchiveOut() functions.
 void my_reflection_example() {
     ChArchiveExplorer mexplorer;
     mexplorer.SetUseWildcards(true);
@@ -557,6 +602,10 @@ void my_reflection_example() {
     }
 }
 
+
+
+
+
 int main(int argc, char* argv[]) {
     GetLog() << "Copyright (c) 2017 projectchrono.org\nChrono version: " << CHRONO_VERSION << "\n\n";
 
@@ -575,90 +624,112 @@ int main(int argc, char* argv[]) {
     // ChArchiveOutBinary and ChArchiveInBinary can be used for this
     // purpose.
 
-    try {
-        // Example: SERIALIZE TO ASCII DUMP (useful for debugging etc.):
-        {
-            std::string asciifile = out_dir + "/foo_archive.txt";
-            ChStreamOutAsciiFile mfileo(asciifile.c_str());
 
-            // Create an ASCII archive object, for dumping C++ objects into a readable file
-            ChArchiveAsciiDump marchiveout(mfileo);
+    // Example: SERIALIZE TO ASCII DUMP (useful for debugging etc.):
+    {
+        std::string asciifile = out_dir + "/foo_archive.txt";
+        ChStreamOutAsciiFile mfileo(asciifile.c_str());
 
-            my_serialization_example(marchiveout);
-        }
+        // Create an ASCII archive object, for dumping C++ objects into a readable file
+        ChArchiveAsciiDump marchiveout(mfileo);
 
-        // Example: SERIALIZE TO/FROM BINARY:
-        {
-            std::string binfile = out_dir + "/foo_archive.dat";
-            ChStreamOutBinaryFile mfileo(binfile.c_str());
-
-            // Use a binary archive object to serialize C++ objects into the binary file
-            ChArchiveOutBinary marchiveout(mfileo);
-
-            my_serialization_example(marchiveout);
-        }
-
-        {
-            std::string binfile = out_dir + "/foo_archive.dat";
-            ChStreamInBinaryFile mfilei(binfile.c_str());
-
-            // Use a binary archive object to deserialize C++ objects from the binary file
-            ChArchiveInBinary marchivein(mfilei);
-
-            my_deserialization_example(marchivein);
-        }
-
-        // Example: SERIALIZE TO/FROM JSON:
-        {
-            std::string jsonfile = out_dir + "/foo_archive.json";
-            ChStreamOutAsciiFile mfileo(jsonfile.c_str());
-
-            // Use a JSON archive object to serialize C++ objects into the file
-            ChArchiveOutJSON marchiveout(mfileo);
-
-            my_serialization_example(marchiveout);
-        }
-
-        {
-            std::string jsonfile = out_dir + "/foo_archive.json";
-            ChStreamInAsciiFile mfilei(jsonfile.c_str());
-
-            // Use a JSON archive object to deserialize C++ objects from the file
-            ChArchiveInJSON marchivein(mfilei);
-
-            my_deserialization_example(marchivein);
-        }
-
-        // Example: SERIALIZE TO/FROM XML
-        {
-            std::string xmlfile = out_dir + "/foo_archive.xml";
-            ChStreamOutAsciiFile mfileo(xmlfile.c_str());
-
-            // Use a XML archive object to serialize C++ objects into the file
-            ChArchiveOutXML marchiveout(mfileo);
-
-            my_serialization_example(marchiveout);
-        }
-
-        {
-            std::string xmlfile = out_dir + "/foo_archive.xml";
-            ChStreamInAsciiFile mfilei(xmlfile.c_str());
-
-            // Use a XML archive object to deserialize C++ objects from the file
-            ChArchiveInXML marchivein(mfilei);
-
-            my_deserialization_example(marchivein);
-        }
-
-        GetLog() << "Serialization test ended with success.\n\n";
-
-        my_reflection_example();
-
-        GetLog() << "Reflection test ended with success.\n";
-
-    } catch (const ChException& myex) {
-        GetLog() << "ERROR: " << myex.what() << "\n\n";
+        my_serialization_example(marchiveout);
     }
+
+    // Example: SERIALIZE TO/FROM BINARY:
+    {
+        std::string binfile = out_dir + "/foo_archive.dat";
+        ChStreamOutBinaryFile mfileo(binfile.c_str());
+
+        // Use a binary archive object to serialize C++ objects into the binary file
+        ChArchiveOutBinary marchiveout(mfileo);
+
+        my_serialization_example(marchiveout);
+    }
+
+    {
+        std::string binfile = out_dir + "/foo_archive.dat";
+        ChStreamInBinaryFile mfilei(binfile.c_str());
+
+        // Use a binary archive object to deserialize C++ objects from the binary file
+        ChArchiveInBinary marchivein(mfilei);
+
+        my_deserialization_example(marchivein);
+    }
+
+    // Example: SERIALIZE TO/FROM JSON:
+    {
+        std::string jsonfile = out_dir + "/foo_archive.json";
+        ChStreamOutAsciiFile mfileo(jsonfile.c_str());
+
+        // Use a JSON archive object to serialize C++ objects into the file
+        ChArchiveOutJSON marchiveout(mfileo);
+
+        my_serialization_example(marchiveout);
+    }
+
+    {
+        std::string jsonfile = out_dir + "/foo_archive.json";
+        ChStreamInAsciiFile mfilei(jsonfile.c_str());
+
+        // Use a JSON archive object to deserialize C++ objects from the file
+        ChArchiveInJSON marchivein(mfilei);
+
+        my_deserialization_example(marchivein);
+    }
+
+    // Example: SERIALIZE TO/FROM XML
+    {
+        std::string xmlfile = out_dir + "/foo_archive.xml";
+        ChStreamOutAsciiFile mfileo(xmlfile.c_str());
+
+        // Use a XML archive object to serialize C++ objects into the file
+        ChArchiveOutXML marchiveout(mfileo);
+
+        my_serialization_example(marchiveout);
+    }
+
+    {
+        std::string xmlfile = out_dir + "/foo_archive.xml";
+        ChStreamInAsciiFile mfilei(xmlfile.c_str());
+
+        // Use a XML archive object to deserialize C++ objects from the file
+        ChArchiveInXML marchivein(mfilei);
+
+        my_deserialization_example(marchivein);
+    }
+
+    GetLog() << "Serialization test ended with success.\n\n";
+
+
+    // Example: SERIALIZE A FULL CHRONO SYSTEM TO/FROM JSON
+    {
+        std::string jsonfile = out_dir + "/chsystem_archive.json";
+        ChStreamOutAsciiFile mfileo(jsonfile.c_str());
+
+        // Use a JSON archive object to serialize C++ objects into the file
+        ChArchiveOutJSON marchiveout(mfileo);
+
+        my_system_serialization_example(marchiveout);
+    }
+
+    {
+        std::string jsonfile = out_dir + "/chsystem_archive.json";
+        ChStreamInAsciiFile mfilei(jsonfile.c_str());
+
+        // Use a JSON archive object to deserialize C++ objects from the file
+        ChArchiveInJSON marchivein(mfilei);
+
+        my_system_deserialization_example(marchivein);
+    }
+
+    GetLog() << "Serialization of ChSystem ended with success.\n\n";
+        
+
+    my_reflection_example();
+
+    GetLog() << "Reflection test ended with success.\n";
+
 
     return 0;
 }

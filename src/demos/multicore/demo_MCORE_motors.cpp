@@ -60,14 +60,16 @@ void CreateStatorRotor(std::shared_ptr<ChBody>& mstator,
                        std::shared_ptr<ChMaterialSurface> material,
                        ChSystem& msystem,
                        const ChVector<> mpos) {
-    mstator = chrono_types::make_shared<ChBodyEasyCylinder>(0.5, 0.1, 1000, material,
+    mstator = chrono_types::make_shared<ChBodyEasyCylinder>(geometry::ChAxis::Y,       //
+                                                            0.5, 0.1, 1000, material,  //
                                                             collision::ChCollisionSystemType::CHRONO);
     mstator->SetPos(mpos);
     mstator->SetRot(Q_from_AngAxis(CH_C_PI_2, VECT_X));
     mstator->SetBodyFixed(true);
     msystem.Add(mstator);
 
-    mrotor = chrono_types::make_shared<ChBodyEasyBox>(1, 0.1, 0.1, 1000, material, collision::ChCollisionSystemType::CHRONO);
+    mrotor =
+        chrono_types::make_shared<ChBodyEasyBox>(1, 0.1, 0.1, 1000, material, collision::ChCollisionSystemType::CHRONO);
     mrotor->SetPos(mpos + ChVector<>(0.5, 0, -0.15));
     msystem.Add(mrotor);
 }
@@ -555,7 +557,7 @@ int main(int argc, char* argv[]) {
     vis.SetWindowSize(1280, 720);
     vis.SetRenderMode(opengl::SOLID);
     vis.Initialize();
-    vis.SetCameraPosition(ChVector<>(1, 3, -7), ChVector<>(0, 0, 0));
+    vis.AddCamera(ChVector<>(1, 3, -7), ChVector<>(0, 0, 0));
     vis.SetCameraVertical(CameraVerticalDir::Y);
 
     // Simulate system

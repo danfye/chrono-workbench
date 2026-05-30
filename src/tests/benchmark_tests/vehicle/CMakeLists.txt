@@ -1,4 +1,4 @@
-if(NOT ENABLE_MODULE_VEHICLE)
+if(NOT ENABLE_MODULE_VEHICLE OR NOT ENABLE_MODULE_VEHICLE_MODELS)
     return()
 endif()
     
@@ -19,7 +19,7 @@ list(APPEND LIBS "ChronoEngine_vehicle")
 list(APPEND LIBS "ChronoModels_vehicle")
 
 if(ENABLE_MODULE_IRRLICHT)
-  include_directories(${CH_IRRLICHTINC})
+  include_directories(${CH_IRRLICHT_INCLUDES})
   set(COMPILER_FLAGS "${COMPILER_FLAGS} ${CH_IRRLICHT_CXX_FLAGS}")
   list(APPEND LIBS "ChronoEngine_irrlicht")
   list(APPEND LIBS "ChronoEngine_vehicle_irrlicht")

@@ -29,7 +29,7 @@ namespace fea {
 /// @{
 
 /// Contact element of triangular type.
-/// This can be used to 'tessellate' the surface of FEA meshes for collision purposes.
+/// Used to 'tessellate' the surface of FEA meshes for collision purposes.
 class ChApi ChContactTriangleXYZ : public ChContactable_3vars<3, 3, 3>, public ChLoadableUV {
   public:
     ChContactTriangleXYZ();
@@ -221,12 +221,8 @@ class ChApi ChContactTriangleXYZ : public ChContactable_3vars<3, 3, 3>, public C
 
 // -----------------------------------------------------------------------------
 
-/// Contact element of triangular type - version for triangles where the
-/// nodes are of ChNodeFEAxyzrot type.
-/// NOTE! if in future we could have ChNodeFEAxyzrot inherited from ChNodeFEAxyz,
-/// probably this class would be unnecessary! (Now, it is a bit redundant with ChContactTriangleXYZ)
-/// This can be used to 'tessellate' a generic surface like the
-/// outer of tetrahedral meshes
+/// Contact element of triangular type - version for triangles where the nodes are of ChNodeFEAxyzrot type.
+/// Used to 'tessellate' a generic surface like the outer of tetrahedral meshes.
 class ChApi ChContactTriangleXYZROT : public ChContactable_3vars<6, 6, 6>, public ChLoadableUV {
   public:
     ChContactTriangleXYZROT();
@@ -421,20 +417,37 @@ class ChApi ChContactTriangleXYZROT : public ChContactable_3vars<6, 6, 6>, publi
 // -----------------------------------------------------------------------------
 
 /// Class which defines a contact surface for FEA elements, using a mesh of triangles.
-/// Differently from ChContactSurfaceNodeCloud, this also captures the FEAnodes-vs-FEAfaces
-/// and FEAedge-vs-FEAedges cases, but it has a higher computational overhead
+/// Differently from ChContactSurfaceNodeCloud, this also captures the node-vs-face and edge-vs-edge cases, but has a
+/// higher computational overhead.
 class ChApi ChContactSurfaceMesh : public ChContactSurface {
   public:
     ChContactSurfaceMesh(std::shared_ptr<ChMaterialSurface> material, ChMesh* mesh = nullptr);
 
     virtual ~ChContactSurfaceMesh() {}
 
-    /// Given a FEA mesh (ex a mesh of tetrahedrons) it finds the faces on the outer boundary.
-    /// That is, it scans all the finite elements already added in the parent ChMesh and adds the faces
+    /// Add the face specified by the three specified nodes to this collision mesh.
+    void AddFace(std::shared_ptr<ChNodeFEAxyz> node1,       ///< face node1
+                 std::shared_ptr<ChNodeFEAxyz> node2,       ///< face node2
+                 std::shared_ptr<ChNodeFEAxyz> node3,       ///< face node3
+                 std::shared_ptr<ChNodeFEAxyz> edge_node1,  ///< edge node 1 (nullptr if no wing node)
+                 std::shared_ptr<ChNodeFEAxyz> edge_node2,  ///< edge node 2 (nullptr if no wing node)
+                 std::shared_ptr<ChNodeFEAxyz> edge_node3,  ///< edge node 3 (nullptr if no wing node)
+                 bool owns_node1,                           ///< this collision face owns node1
+                 bool owns_node2,                           ///< this collision face owns node2
+                 bool owns_node3,                           ///< this collision face owns node3
+                 bool owns_edge1,                           ///< this collision face owns edge1
+                 bool owns_edge2,                           ///< this collision face owns edge2
+                 bool owns_edge3,                           ///< this collision face owns edge3
+                 double sphere_swept = 0.0                  ///< thickness (radius of sweeping sphere)
+    );
+
+    /// Utility function to add all boundary faces of the associated FEA mesh to this collision surface.
+    /// This function does nothing if the contact surface was not yet associated with an FEA mesh.
+    /// The function scans all the finite elements already added in the parent ChMesh and adds the faces
     /// that are not shared (ie. the faces on the boundary 'skin').
     /// For shells, the argument 'ccw' indicates whether the face vertices are provided in a counter-clockwise (default)
     /// or clockwise order, this has a reason: shells collisions are oriented and might work only from the "outer" side.
-    /// Supported elements that generate boundary skin:
+    /// Currently supported elements that generate boundary skin:
     /// - solids:
     ///     - ChElementTetrahedron: all solid tetrahedrons
     ///     - ChElementHexahedron: all solid hexahedrons
@@ -446,12 +459,11 @@ class ChApi ChContactSurfaceMesh : public ChContactSurface {
     /// - beams:
     ///     - ChElementCableANCF: ANCF beams (as sphere-swept lines, i.e. sequence of capsules)
     ///     - ChElementBeamEuler: Euler-Bernoulli beams (as sphere-swept lines, i.e. sequence of capsules)
-    /// More will follow in future.
     void AddFacesFromBoundary(double sphere_swept = 0.0,  ///< radius of swept sphere
                               bool ccw = true             ///< indicate clockwise or counterclockwise vertex ordering
     );
 
-    /// As AddFacesFromBoundary, but only for faces containing selected nodes in node_set.
+    // Same as AddFacesFromBoundary, but only for faces containing selected nodes in node_set.
     // void AddFacesFromNodeSet(std::vector<std::shared_ptr<ChNodeFEAbase> >& node_set); ***TODO***
 
     /// Get the list of triangles.

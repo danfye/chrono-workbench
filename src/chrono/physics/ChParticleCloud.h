@@ -48,7 +48,7 @@ class ChApi ChAparticle : public ChParticleBase, public ChContactable_1vars<6> {
 
     // INTERFACE TO ChContactable
 
-	virtual ChContactable::eChContactableType GetContactableType() const override { return CONTACTABLE_6; }
+    virtual ChContactable::eChContactableType GetContactableType() const override { return CONTACTABLE_6; }
 
     /// Access variables.
     virtual ChVariables* GetVariables1() override { return &Variables(); }
@@ -136,8 +136,8 @@ class ChApi ChAparticle : public ChParticleBase, public ChContactable_1vars<6> {
     virtual ChPhysicsItem* GetPhysicsItem() override;
 
     // SERIALIZATION
-    virtual void ArchiveOUT(ChArchiveOut& marchive) override;
-    virtual void ArchiveIN(ChArchiveIn& marchive) override;
+    virtual void ArchiveOut(ChArchiveOut& marchive) override;
+    virtual void ArchiveIn(ChArchiveIn& marchive) override;
 
     // DATA
     ChParticleCloud* container;
@@ -188,6 +188,12 @@ class ChApi ChParticleCloud : public ChIndexedParticles {
     /// Get all particles in the cluster.
     std::vector<ChAparticle*> GetParticles() const { return particles; }
 
+    /// Get particle position.
+    const ChVector<>& GetParticlePos(unsigned int n) const { return particles[n]->GetPos(); }
+
+    /// Get particle linear velocity.
+    const ChVector<>& GetParticleVel(unsigned int n) const { return particles[n]->GetPos_dt(); }
+
     /// Access the N-th particle.
     ChParticleBase& GetParticle(unsigned int n) override {
         assert(n < particles.size());
@@ -212,6 +218,27 @@ class ChApi ChParticleCloud : public ChIndexedParticles {
     /// Set the material surface for contacts
     std::shared_ptr<ChMaterialSurface>& GetMaterialSurface() { return matsurface; }
 
+    /// Class to be used as a callback interface for dynamic coloring of particles in a cloud.
+    class ChApi ColorCallback {
+      public:
+        virtual ~ColorCallback() {}
+
+        /// Return the color for the given particle.
+        virtual ChColor get(unsigned int n, const ChParticleCloud& cloud) const = 0;
+    };
+
+    /// Set callback to dynamically set visualization color (default: none).
+    /// If enabled, a visualization system could use this for color-coding of the particles in a cloud.
+    void RegisterColorCallback(std::shared_ptr<ColorCallback> callback) { m_color_fun = callback; }
+
+    /// Return true if using dynamic coloring.
+    /// This is the case if a ColorCallback was specified.
+    bool UseDynamicColors() const;
+
+    /// Get the visualization color for the specified particle.
+    /// Return the color given by a ColorCallback, if one was provided. Otherwise return a default color.
+    ChColor GetVisualColor(unsigned int n) const;
+
     // STATE FUNCTIONS
 
     // (override/implement interfaces for global state vectors, see ChPhysicsItem for comments.)
@@ -234,10 +261,10 @@ class ChApi ChParticleCloud : public ChIndexedParticles {
                                    const unsigned int off_v,
                                    const ChStateDelta& Dv) override;
     virtual void IntStateGetIncrement(const unsigned int off_x,
-                                   const ChState& x_new,
-                                   const ChState& x,
-                                   const unsigned int off_v,
-                                   ChStateDelta& Dv) override;
+                                      const ChState& x_new,
+                                      const ChState& x,
+                                      const unsigned int off_v,
+                                      ChStateDelta& Dv) override;
     virtual void IntLoadResidual_F(const unsigned int off, ChVectorDynamic<>& R, const double c) override;
     virtual void IntLoadResidual_Mv(const unsigned int off,
                                     ChVectorDynamic<>& R,
@@ -347,18 +374,17 @@ class ChApi ChParticleCloud : public ChIndexedParticles {
     virtual void Update(bool update_assets = true) override;
 
     // SERIALIZATION
-    virtual void ArchiveOUT(ChArchiveOut& marchive) override;
-    virtual void ArchiveIN(ChArchiveIn& marchive) override;
+    virtual void ArchiveOut(ChArchiveOut& marchive) override;
+    virtual void ArchiveIn(ChArchiveIn& marchive) override;
 
   private:
-    std::vector<ChAparticle*> particles;  ///< the parricles
+    std::vector<ChAparticle*> particles;  ///< the particles
+    ChSharedMassBody particle_mass;       ///< shared mass of particles
 
-    ChSharedMassBody particle_mass;  ///< shared mass of particles
+    std::shared_ptr<ColorCallback> m_color_fun;  ///< callback for dynamic coloring
 
     collision::ChCollisionModel* particle_collision_model;  ///< sample collision model
-
-    std::shared_ptr<ChMaterialSurface> matsurface;  ///< data for surface contact and impact
-
+    std::shared_ptr<ChMaterialSurface> matsurface;          ///< data for surface contact and impact
     bool fixed;
     bool do_collide;
     bool do_limit_speed;
@@ -372,7 +398,55 @@ class ChApi ChParticleCloud : public ChIndexedParticles {
     float sleep_starttime;
 };
 
-CH_CLASS_VERSION(ChParticleCloud,0)
+/// Predefined particle cloud dynamic coloring based on particle height.
+class ChApi HeightColorCallback : public ChParticleCloud::ColorCallback {
+  public:
+    HeightColorCallback(double hmin, double hmax, const ChVector<>& up = ChVector<>(0, 0, 1))
+        : m_monochrome(false), m_hmin(hmin), m_hmax(hmax), m_up(up) {}
+    HeightColorCallback(const ChColor& base_color, double hmin, double hmax, const ChVector<>& up = ChVector<>(0, 0, 1))
+        : m_monochrome(true), m_base_color(base_color), m_hmin(hmin), m_hmax(hmax), m_up(up) {}
+
+    virtual ChColor get(unsigned int n, const ChParticleCloud& cloud) const override {
+        double height = Vdot(cloud.GetParticlePos(n), m_up);  // particle height
+        if (m_monochrome) {
+            float factor = (float)((height - m_hmin) / (m_hmax - m_hmin));  // color scaling factor (0,1)
+            return ChColor(factor * m_base_color.R, factor * m_base_color.G, factor * m_base_color.B);
+        } else
+            return ChColor::ComputeFalseColor(height, m_hmin, m_hmax);
+    }
+
+  private:
+    bool m_monochrome;
+    ChColor m_base_color;
+    double m_hmin;
+    double m_hmax;
+    ChVector<> m_up;
+};
+
+class ChApi VelocityColorCallback : public ChParticleCloud::ColorCallback {
+  public:
+    VelocityColorCallback(double vmin, double vmax) : m_monochrome(false), m_vmin(vmin), m_vmax(vmax) {}
+    VelocityColorCallback(const ChColor& base_color, double vmin, double vmax)
+        : m_monochrome(true), m_base_color(base_color), m_vmin(vmin), m_vmax(vmax) {}
+
+    virtual ChColor get(unsigned int n, const ChParticleCloud& cloud) const override {
+        double vel = cloud.GetParticleVel(n).Length();  // particle velocity
+        if (m_monochrome) {
+            float factor = (float)((vel - m_vmin) / (m_vmax - m_vmin));  // color scaling factor (0,1)
+            return ChColor(factor * m_base_color.R, factor * m_base_color.G, factor * m_base_color.B);
+        } else
+            return ChColor::ComputeFalseColor(vel, m_vmin, m_vmax);
+    }
+
+  private:
+    bool m_monochrome;
+    ChColor m_base_color;
+    double m_vmin;
+    double m_vmax;
+    ChVector<> m_up;
+};
+
+CH_CLASS_VERSION(ChParticleCloud, 0)
 
 }  // end namespace chrono
 

@@ -5,11 +5,28 @@ Change Log
 ==========
 
 - [Unreleased (development version)](#unreleased-development-branch)
+  - [Moved drive mode to automatic transmissions](#changed-moved-drive-mode-to-automatic-transmissions)
+  - [Changed gear numbering](#changed-changed-gear-numbering)
+  - [Redundant constraints remover](#added-redundant-constraints-remover)
+  - [Create models through JSON/XML](#added-create-models-through-jsonxml)
+  - [Serialization expanded and improved](#changed-serialization-expanded-and-improved)
+  - [Rewrite of Pac02 handling tire model](#changed-rewrite-of-pac02-handling-tire-model)
+  - [New URDF parser](#added-new-urdf-parser)
+  - [Support for STL 3D file format](#added-support-for-stl-3d-file-format)
+  - [Definition and use of primitive geometric shapes](#changed-definition-and-use-of-primitive-geometric-shapes)
+  - [Chrono::Vehicle engine and transmission templates](#changed-chronovehicle-engine-and-transmission-templates)
+  - [New generic template for wheeled suspension subsystems](#added-new-generic-template-for-wheeled-suspension-subsystems)
+  - [CMake configuration and utility build scripts](#changed-cmake-configuration-and-utility-build-scripts)
+  - [SPHTerrain - continuum representation method for deformable terrain](#added-sphterrain---continuum-representation-method-for-deformable-terrain)
+  - [TMSimple tire model](#added-tmsimple-tire-model)
+  - [Blender plug-in for post-process visualization](#added-blender-plug-in-for-post-process-visualization)
+  - [VSG-based run-time visualization module](#added-vsg-based-run-time-visualization-module)
+  - [Support for linear and nonlinear vehicle force elements](#changed-support-for-linear-and-nonlinear-vehicle-force-elements)
 - [Release 8.0.0](#release-800---2022-12-21)
   - [Chrono::Sensor features and updates](#added-chronosensor-features-and-updates)
   - [Closed-loop vehicle paths](#fixed-closed-loop-vehicle-paths)
   - [Miscellaneous Chrono::Vehicle extensions](#added-miscellaneous-chronovehicle-extensions)
-  - [Chrono:Fsi API changes](#changed-chronofsi-api-changes)
+  - [Chrono::FSI API changes](#changed-chronofsi-api-changes)
   - [User-defined SMC contact force calculation](#added-user-defined-smc-contact-force-calculation)
   - [Redesigned run-time visualization system](#changed-redesigned-run-time-visualization-system)
   - [Vehicle inertia properties](#changed-vehicle-inertia-properties)
@@ -25,7 +42,7 @@ Change Log
 - [Release 7.0.0](#release-700---2021-11-15) 
   - [DDS communicator in Chrono::Synchrono module](#added-dds-communicator-in-chronosynchrono-module)
   - [New terramechanics co-simulation module](#added-new-terramechanics-co-simulation-module)
-  - [Chrono::Fsi API redesign](#changed-chronofsi-api-redesign)
+  - [Chrono::FSI API redesign](#changed-chronofsi-api-redesign)
   - [Sensor performance improvements and feature additions](#changed-sensor-to-improve-performance-and-added-features)
   - [ANCF element improvements and additions](#changed-ancf-element-improvements-and-additions)
   - [New Chrono::Vehicle features](#added-new-chronovehicle-features)
@@ -72,6 +89,434 @@ Change Log
 
 ## Unreleased (development branch)
 
+### [Changed] Moved drive mode to automatic transmissions
+
+The concept of a drive mode was moved from `ChTransmission` to `ChAutomaticTransmission` as it is something that only exists for automatic transmissions. This is an API change.
+
+### [Changed] Changed gear numbering
+
+Reverse gear is now indicated as -1, making room for a neutral gear as 0. Positive numbers are still forward gears. This is a semantic change to the existing API so please review your code as your IDE will most likely not pick up on it. Added to the API is a method to return the highest (forward) gear that is available.
+
+### [Added] Redundant constraints remover
+It is quite common to spot models, even in Chrono demos, where the number of constraints are even greater than the number of variables. While this is allowed in Chrono systems, it should be considered a bad practice. Redundant constraints unusefully increase the size of the problem, lead to noisy measurements of the link reactions, cause instability to direct solvers.  
+Taking care of adding _only_ the required number of constraints is - and always will be - the best option for the user. However, whenever this approach might be too tedious or impractical, it is now possible to ask the system to get rid of those redundant constraints by calling:
+
+`system.RemoveRedundantConstraints()`
+
+It is recommended to:
+- set the model to a generic configuration before the call, since there might be cases in which the redundancy of the constraints is due to a particular system configuration;
+- initially set the `verbose` to `true` to double check which constraints have been removed.
+
+
+### [Added] Create models through JSON/XML
+While the traditional serialization allows to store and load _existing_ models to/from file, it is rather difficult to create such files manually: the amount of internal variables, together with the inherent complexity of initializing their values coherently, would easily lead to an overwhelming task. A task that is usually delegated to the methods of the various classes.
+Because of this, an alternative approach is now offered: instead of simply providing the values to the class variables (data members) through the JSON/XML file, it is now possible to provide *the arguments* to some selected class methods. When a _function-calling tag_ beginning with `_c_` is found, the relative function/method is called.
+For example:
+```
+"_c_SetRot": {
+  "e0": 0.986,
+  "e1": 0.0,
+  "e2": 0.0,
+  "e3": -0.166
+}
+```
+will call `SetRot(ChQuaternion(0.986, 0.0, 0.0, -0.166))` on that object. Multiple-arguments methods are otherwise referred with the syntax `_c_<functionname>_<arg1name>[_<arg2name>]`.
+A JSON example is offerend in the _data/solidworks/*.json_ files.
+
+Clearly, since C++ has a limited reflection/reification capability, this process is NOT automatic, but relies on some hard-coded chunk of code, thus restricting the usage to this limited set of functions:
++ `ChVisualShape::SetColor`
++ `ChFrame::SetPos`
++ `ChFrame::SetRot`
++ `ChBody::SetBodyFixed`
++ `ChBody::SetMass`
++ `ChBody::SetInertiaXX`
++ `ChBody::SetInertiaXY`
++ `ChBodyAuxRef::SetFrame_COG_to_REF` (arguments: ChVector<> and ChQuaternion)
++ `ChLinkMateGeneric::SetConstrainedCoords`
++ `ChLinkMateGeneric::Initialize(std::shared_ptr<ChBodyFrame>, std::shared_ptr<ChBodyFrame>, ChVector<>, ChVector<>, ChVector<>, ChVector<>)`
++ `ChLinkMatePlane::SetFlipped`
++ `ChLinkMateXdistance::Initialize(std::shared_ptr<ChBodyFrame>, std::shared_ptr<ChBodyFrame>, bool, ChVector<>, ChVector<>, ChVector<>)`
++ `ChLinkMateParallel::SetFlipped`
++ `ChMarker::Impose_Abs_Coord` (arguments: ChVector<> and ChQuaternion)
++ `ChPhysicsItem::AddVisualShape` (arguments: std::vector<std::shared_ptr<ChVisualShape>> std::vector<ChFrame<>>)
+
+These methods are available also for any of the derived classes.
+
+While this seems to be a rather limited set of functions, it allows to load any system created by the Chrono Solidworks add-in! Please check [Chrono Solidworks](https://api.projectchrono.org/introduction_chrono_solidworks.html).
+
+This option is available only for JSON/XML files and is enabled by calling, on `ChArchiveInJSON` or `ChArchiveInXML`:  
+`myarchivein.TryTolerateMissingTokens(true);`
+and then loading the system as usual e.g. 
+```
+    std::string jsonfile = "SliderCrank.json";
+    ChStreamInAsciiFile mfilein(jsonfile.c_str());
+    ChArchiveInJSON marchivein(mfilein);
+    myarchivein.TryTolerateMissingTokens(true);
+    ChSystemNSC system;
+    marchivein >> CHNVP(system);
+```
+Please refer to _demo_CH_user_serialize_ for additional info.
+
+
+### [Changed] Serialization expanded and improved
+Serialization is now capable of storing and loading back entire `ChSystem`s consistently. Available classes include rigid bodies along with their visual assets (excluding ChVisualShapeFEA), links (both ChLinkMate and ChLinkLock families), shafts and system solvers. More classes will become available in the next future.
+
+An additional macro called `CH_UPCASTING` now allows to properly handle those classes with multiple inheritance: if a class, *or any of its parent classes*, shows multiple inheritance it is strongly recommended to specify its inheritance scheme with the new `CH_UPCASTING` macro:
+```
+CH_UPCASTING(Derived, Base1)
+CH_UPCASTING(Derived, Base2)
+```
+Assuming a more complex scheme, e.g.
+     C1->D1
+    /
+A->B
+    \
+     C2->D2->E
+```
+CH_UPCASTING(A, B)
+CH_UPCASTING(B, C1)
+CH_UPCASTING(C1, D1)
+CH_UPCASTING(B, C2)
+CH_UPCASTING(C2, D2)
+CH_UPCASTING(D2, E)
+```
+Further insights can be found in the documentation of the `CH_UPCASTING` macro. An additional `CH_UPCASTING_SANITIZED` macro is offered for those classes whose type contains characters not valid for a class name. For example `ChContactable_1vars<6>` is handled through the following:  
+`CH_UPCASTING_SANITIZED(ChBody, ChContactable_1vars<6>, ChBody_ChContactable_1vars_6)`
+ 
+
+### [Changed] Rewrite of Pac02 handling tire model
+
+Some of the salient characteristic of the updated Pac02 handling tire model (implemented in the `ChPac02Tire` class) are:
+- performs only steady state calculations.
+- Fx and Fy can be combined by the Pacejka cosine weighting functions (requires specification of accurate coefficients). 
+- the friction ellipsis code has been removed (if the approach based on the friction ellipsis combination method is acceptable, it is better to use the TMEasy or TMsimple tire models which are much simpler and offer the same level of accuracy).
+- Pac02 model parameters can be set directly as before, but now can also be specified through an ADAMS/Car-compatible `TIR` file. Note that such TIR files may contain data for alternate tire models (such as Fiala or Pac89); if provided such a file, a Pac02 tire will *not* be initialized.
+
+Setting Pac02 tire parameters through the C++ API is done as before. For example,
+```cpp
+  m_par.UNLOADED_RADIUS = 0.345;
+  m_par.LFZO = 1.0;
+```
+Note that the names of member variables in the `MFCoeff` structure `m_par` are now in all-caps for consistency with the format of `TIR` files.
+
+The concrete tire subsystem `Pac02Tire` class reads a full specification of a Chrono Pac02 tire from a `JSON` file. There are two ppossibilities:
+1. Referencing a `TIR` file. For example:
+   ```json
+   {
+    "Name": "Magic Formula Tire from ADAMS/Car TIR file",
+    "Type": "Tire",
+    "Template": "Pac02Tire",
+    "Mass": 16.0,
+    "Inertia": [
+        1.021213842086728,
+        1.828238395872898,
+        1.021213842086728
+    ],
+    "TIR Specification File" : "VW_microbus/json/mf_185_80R14.tir",
+    "Coefficient of Friction": 0.8,
+    "Visualization": {
+        "Mesh Filename Left":  "VW_microbus/van_tire.obj",
+        "Mesh Filename Right": "VW_microbus/van_tire.obj",
+        "Width": 0.185
+    }
+   }
+   ```
+2. Explicitly setting all tire parameters. For example:
+   ```json
+   {
+    "Name": "Magic Formula Tire from parameters",
+    "Type": "Tire",
+    "Template": "Pac02Tire",
+    "Mass": 16.0,
+    "Inertia": [
+        1.021213842086728,
+        1.828238395872898,
+        1.021213842086728
+    ],
+    "Coefficient of Friction": 0.8,
+    "Use Mode" : 3,
+    "Dimension": {
+        "Unloaded Radius": 0.376,
+        "Width": 0.185,
+        "Aspect Ratio": 0.85,
+        "Rim Radius": 0.1778,
+        "Rim Width": 0.17
+    },
+   "Vertical": {
+        "Vertical Stiffness": 332736.8,
+        "Vertical Damping": 2307.3,
+        "Nominal Wheel Load": 4700.0
+    },
+    "Scaling Factors": {
+        "LFZO" : 1,                         // Scale factor of nominal (rated) load
+        "LCX" : 1,                          // Scale factor of Fx shape factor
+        "LMUX" : 1,                         // Scale factor of Fx peak friction coefficient
+        "LEX" : 1,                          // Scale factor of Fx curvature factor
+    // etc...
+        "LKYG" : 1,
+        "LCZ" : 1                           // Scale factor of vertical stiffness
+    },
+    "Longitudinal Coefficients": {
+        "PCX1" : 1.5587,                    // Shape factor Cfx for longitudinal force         
+        "PDX1" : 1.09,                      // Longitudinal friction Mux at Fznom         
+        "PDX2" : -0.079328,                 // Variation of friction Mux with load         
+        "PDX3" : 9.9376e-006,               // Variation of friction Mux with camber         
+    // etc...
+        "PTX2" : -0.0014739,                // Variation of SigKap0/Fz with load         
+        "PTX3" : 0.03631                    // Variation of SigKap0/Fz with exponent of load         
+    },
+    "Lateral Coefficients": {
+        "PCY1" : 1.4675,                    // Shape factor Cfy for lateral forces         
+        "PDY1" : 0.94002,                   // Lateral friction Muy         
+        "PDY2" : -0.17669,                  // Variation of friction Muy with load         
+        "PDY3" : -0.69602,                  // Variation of friction Muy with squared camber         
+    // etc...
+        "RVY6" : 0,                         // Variation of Svyk/Muy*Fz with atan(kappa)         
+        "PTY1" : 1.8473,                    // Peak value of relaxation length SigAlp0/R0         
+        "PTY2" : 1.9465                     // Value of Fz/Fznom where SigAlp0 is extreme         
+    },
+    "Aligning Coefficients": {
+        "QBZ1" : 9.2824,                    // Trail slope factor for trail Bpt at Fznom         
+        "QBZ2" : -2.6095,                   // Variation of slope Bpt with load         
+        "QBZ3" : -0.86548,                  // Variation of slope Bpt with load squared         
+        "QBZ4" : -0.16332,                  // Variation of slope Bpt with camber         
+        "QBZ5" : -0.35511,                  // Variation of slope Bpt with absolute camber         
+        "QBZ9" : 13.946,                    // Slope factor Br of residual torque Mzr         
+        "QBZ10" : 0,                        // Slope factor Br of residual torque Mzr         
+    // etc...
+        "SSZ1" : 0.026243,                  // Nominal value of s/R0: effect of Fx on Mz         
+        "SSZ2" : -0.013391,                 // Variation of distance s/R0 with Fy/Fznom         
+        "SSZ3" : 0.3923,                    // Variation of distance s/R0 with camber         
+        "SSZ4" : -0.16022,                  // Variation of distance s/R0 with load and camber         
+        "QTZ1" : 0.2,                       // Gyration torque constant         
+        "MBELT" : 3.5                       // Belt mass of the wheel         
+    },
+    "Overturning Coefficients": {
+        "QSX1" : 0,                         // Lateral force induced overturning moment         
+        "QSX2" : 0,                         // Camber induced overturning couple         
+        "QSX3" : 0                          // Fy induced overturning couple         
+    },
+    "Rolling Coefficients": {
+        "QSY1"                     : 0.01,  // Rolling resistance torque coefficient         
+        "QSY2"                     : 0,     // Rolling resistance torque depending on Fx         
+        "QSY3"                     : 0,     // Rolling resistance torque depending on speed         
+        "QSY4"                     : 0      // Rolling resistance torque depending on speed ^4         
+    },
+    "Visualization": {
+        "Mesh Filename Left":  "VW_microbus/van_tire.obj",
+        "Mesh Filename Right": "VW_microbus/van_tire.obj",
+        "Width": 0.185
+    }
+   }
+   ```
+
+Notes:
+- not all masses and inertia values are read from the `TIR` file and as such must be set separately. This is because the magic formula has seen numerous updates over the years and some specification files include inertia properties while other do not.
+- `TIR` files may include data in units other than SI. The Chrono parser in `Pac02Tire` applies the appropriate conversions.
+- when specifying tire parameters explicitly (option 2 above), all units **must** be SI (fortunately, most Pac02 parameters are adimensional).
+- if a parameter is not explicitly set in the JSON file, it is set to a default value of `0.0`; similarly, scaling factors not explicitly defined in the JSON file are set to a default value of `1.0`.
+
+### [Added] New URDF parser
+
+The miscellaneous parsers provided with Chrono have been reorganized in a separate module, Chrono::Parsers. This module (and associated library) include the previous OpenSim and Adams parsers (previously part of the core Chrono library, as well as the Python parser (previously a separate library built together with the PyChrono wrapper libraries). In addition, the Chrono::Parsers module has a new parser which can populate a Chrono system with a mechanism specified through a [URDF](http://wiki.ros.org/urdf]) (Unified Robotics Description Format) file.
+
+ChParserURDF is implemented based on the canonical ROS URDF parser, `urdfdom` and supports all modeling elements that can be specified through URDF. These include bodies and joints (revolute, prismatic, fixed, or free), visualization geometry, and collision geometry. URDF is limited to specifying only open-loop mechanisms, but additional joints can be added to the Chrono system once the input URDF file was parsed and processed.
+
+Some of the more important capabilities of the ChParserURDF parser are:
+- enabling specific joints as actuated (i.e., create Chrono motors instead of kinematic joints);
+- support for different types of actuation (position/angle, linear speed/angular speed, or force/torque, depending on whether using a linear or a rotation motor);
+- specification of different contact materials on different bodies;
+- support for different interpretations of collision meshes (as triangular meshes, convex hulls, or node clouds);
+- support for arbitrary actuation functions (on joints converted to Chrono motors).
+
+In addition, a utility class (`ChRobotActuation`) was implemented to allow actuation of robot motors using interpolated data from files. This actuator class allows specifying a series of different phases for a generic robotic mechanism, including phases for assuming a start pose, the cycle phase itself, and a stopping phase to reach a rest pose. The `ChRobotActuation` allows definition of a custom callback for user-defined actions at each phase transition.
+
+To build the Chrono URDF parser when the Chrono::Parsers module is enabled (set `ENABLE_MODULE_PARSERS` to `ON` during CMake configuration), several dependency libraries must be provided. For convenience, bat and shell scripts (for Windows and Linux, respectively) are provided in the Chrono distribution (under `contrib/build-scripts/urdf`).
+
+Two example URDF models are provided: the R2D2 model from the ROS [URDF tutorial](http://wiki.ros.org/urdf/Tutorials/Building%20a%20Visual%20Robot%20Model%20with%20URDF%20from%20Scratch) and the previously available RoboSimian robot.
+
+See `demo_PARSER_URDF` for an illustration of reading and visualizing a robot specified through URDF. See `demo_PARSER_URDF_RoboSimian` for a more complex example of building and actuating a robot specified through URDF.
+
+### [Added] Support for STL 3D file format
+
+We have added support for creating a triangular mesh (`ChTriangleMeshConnected`) from a **binary** STL () file. This is implemented through the functions `ChTriangleMeshConnected::LoadSTLMesh()` and `ChTriangleMeshConnected::CreateFromSTLFile()`.
+
+Even though the STL format uses a redundant representation in which vertices are replicated for each mesh face, the Chrono reader functions collapse identical vertices, thus providing a minimal mesh representation and connectivity information.
+
+### [Changed] Definition and use of primitive geometric shapes
+
+Specification of low-level geometric shapes and their use as collision and visualization shapes was changed for consistency and a more intuitive API.  The main changes can be described as follows:
+  - Geometric shapes with a directional axis (e.g., cylinder, cone, capsule) are always aligned with the Z axis.
+  - Size information is now provided through more intuitive quantities (full lengths for a box sides, axis lengths for an ellipsoid, radius and length for a cylinder or a cone, etc).
+    Notable exceptions are:
+      - a sphere is specified by its radius,
+      - a capsule is specified by a radius and the length of its cylindrical portion.
+  - Geometric data for a shape contains no information on pose of that shape when used as a collision or visualization shape.  A transform (position and orientation) is specified only when a geometric shape is included in a visualization model or in a collision model. In particular, the specification of a cylinder by the coordinates of its end cap center points was removed. However, convenience functions are provided to facilitate this approach to constructing a cylindrical shape (see below).
+  - For classes derived from `ChVisualShape` we provide constructors that take relevant arguments specifying the shape size; as such, access to the low-level underlying geometry (through the `GetGeometry()` functions) is needed only in very special situations.
+
+While these changes affected a lot of the Chrono code base, user code must be updated only in a relatively few places:
+  - Specification of `ChVisualShape` objects and inclusion in a visual model:
+
+    Old code (visualization cylinder along Y axis):
+    ```cpp
+    auto cyl = chrono_types::make_shared<ChCylinderShape>();
+    cyl->GetCylinderGeometry().p1 = ChVector<>(2, -0.2, 0);
+    cyl->GetCylinderGeometry().p2 = ChVector<>(2, 0.5, 0);
+    cyl->GetCylinderGeometry().rad = 0.3;
+    cyl->AddMaterial(orange_mat);
+    body->AddVisualShape(cyl);
+    ```
+    New code:
+    ```cpp
+    auto cyl = chrono_types::make_shared<ChCylinderShape>(0.3, 0.7);
+    cyl->AddMaterial(orange_mat);
+    body->AddVisualShape(cyl, ChFrame<>(ChVector<>(2, 0.15, 0), Q_from_AngX(CH_C_PI_2)));
+    ```
+
+  - Addition of primitive collision shapes to a collision model:
+  
+    Old code (collision cylinder along Y axis):
+    ```cpp
+    object->GetCollisionModel()->ClearModel();
+    object->GetCollisionModel()->AddCylinder(object_mat, radius, radius, hlen, ChVector<>(0), ChMatrix33<>(1));
+    object->GetCollisionModel()->BuildModel();
+    ```
+    New code:
+    ```cpp
+    object->GetCollisionModel()->ClearModel();
+    object->GetCollisionModel()->AddCylinder(object_mat, radius, 2 * hlen, ChVector<>(0), Q_from_AngX(CH_C_PI_2));
+    object->GetCollisionModel()->BuildModel();
+    ```
+
+  - Creation of a `ChBodyEasyCylinder`:
+
+    Old code:
+    ```cpp
+    auto body = chrono_types::make_shared<ChBodyEasyCylinder>(radB, 0.4, 1000, true, false, mat);
+    ```
+    New code:
+    ```cpp
+    auto body = chrono_types::make_shared<ChBodyEasyCylinder>(geometry::ChAxis::Y, radB, 0.4, 1000, true, false, mat);
+    ```
+
+Consult the various Chrono demos for examples of specifying visualization and collision shapes using the new API.
+
+For convenience, the following mechanisms are provided to construct cylinders when the locations of the endcap centers are known:
+  - visualization cylinder shape defined through its endcaps -- construct a helper `ChLineSegment` object:
+  ```cpp
+  geometry::ChLineSegment seg(ChVector<>(0, -(hl - 0.2) * sina, (hl - 0.2) * cosa),
+                              ChVector<>(0, -(hl + 0.2) * sina, (hl + 0.2) * cosa));
+  auto cyl_2 = chrono_types::make_shared<ChCylinderShape>(0.3, seg.GetLength());
+  ground->AddVisualShape(cyl_2, seg.GetFrame());
+  ```       
+  - collision cylinder shape defined through its endcaps -- use the alternative version of `ChCollisionModel::AddCylinder`:
+  ```cpp
+  bool AddCylinder(                                   //
+        std::shared_ptr<ChMaterialSurface> material,  ///< surface contact material
+        double radius,                                ///< radius
+        const ChVector<>& p1,                         ///< first end point
+        const ChVector<>& p2                          ///< second end point
+    );
+  ```
+  
+In conjunction with the above changes to the basic primitive shapes, several other updates were made for a more consistent and intuitive API:
+  - all utility functions defined in `utils::ChUtilsCreators.h` were updated to follow the new conventions.
+  - the utility function `utils::AddBoxContainer` was modified to construct a box volume with given dimensions centered at the origin of the provided reference frame (previously, the center of the "bottom" wall was at the frame origin).
+  - the utility function `fsi::AddBoxContaionerBCE` (previously named `fsi::AddContainerBCE`) was modified to follow the same convention as above.
+
+For users of the `Chrono::Vehicle` module, note that these changes **do not** affect use of any of the vehicle subsystem templates nor do they require any changes to JSON specification files.
+
+### [Changed] Chrono::Vehicle engine and transmission templates
+
+New Chrono::Vehicle templates for the engine and transmission subsystems replace the old powertrain template. The new templates maintain the same modelling capabilities, but allow more flexibility in mixing and matching different models of engines with different transmission models. The coupling between an engine and a transmission is done at the motorshaft, with the engine providing the torque on this shaft and the transmission specifying the angular speed of the shaft. For interfacing with the vehicle system, an aggregate class, ChPowertrainAssembly, manages an engine and transmission and intermediates the coupling with a driveline vehicle subsystem through the driveshaft connecting the transmission to the driveline.
+
+The following engine templates are available:
+  - ChEngineShafts - template for modeling an engine using 1-D shaft elements and engine torque-speed maps including maps for engine losses.
+  - ChEngineSimpleMap - template for a kinematic engine model based on torque-speed maps.
+  - ChEngineSimple - template for a kinematic engine model based on a linear torque-speed dependency.
+
+The following templates for automatic transmissions are available:
+  - ChAutomaticTransmissionShafts - template for modelling an automatic transmission using 1-D shaft elements and a torque converter specified through the capacity factor and torque ratio maps.
+  - ChAutomaticTransmissionSimpleMap - template for a kinematic model of an automatic transmission using shift maps.
+
+Any of the above engine models can be coupled with either transmission model, as well with any Chrono::Vehicle driveline model (for either a wheeled or tracked vehicle).
+
+While currently only templates for automatic transmissions are implemented, the new code design allows introduction of manual transmissions which will be implemented at a later date.
+
+This code change requires modifications to any existing vehicle model, whether specified through a set of C++ classes providing concrete instantiations of various subsystem templates or else specified through a set of JSON files. Consult the vehicle models in the Chrono::Vehicle models library and the sample JSON specification files distributed with Chrono.
+
+
+### [Added] New generic template for wheeled suspension subsystems
+
+A new Chrono::Vehicle template for modeling a wheeled vehicle suspension was added. The `ChGenericWheeledSuspension` class permits definition of a suspension subsystem with arbitrary, user-defined topology and sets of bodies, joints, and spring-damper elements. The only elements assumed to always exist in a suspension subsystem are the two spindles and the two axle shafts which connect the spindles to a driveline. A companion class, `GenericWheeledSuspension` allows definition of an arbitrary suspension subsystem based on a JSON specification file. 
+
+In this new template, modeling elements (bodies, joints, TSDAs, and RSDAs) are identified by their names. Positions and orientations are expected to be expressed relative to the suspension subsystem reference frame (except for collision and visualization shapes which must be provided relative to the associated physical modeling element). Any of the physical elements present in a suspension subsystem can be marked as "mirrored" or "non-mirrored"; in the former case, only the element on the left side (positive y) must be defined and two Chrono modeling elements are created, mirrored with respect to the x-z plane. Joints and spring-damper elements (TSDAs or RSDAs) can be connect any two bodies in the subsystem, as well as a suspension body to the chassis, a possible sub-chassis susbsystem, or a possible steering mechanism link. `ChGenericWheeledSuspension` provides a mechanism for identifying these three special bodies that are external to the suspension subsystem.
+
+This new template allows for more flexibility in defining non-standard or concept suspension subsystems without the restrictions imposed by the existing Chrono::Vehicle suspension templates (in terms of the number of bodies, joints, force elements, and their connectivity). In fact, any of the existing suspension templates can be replicated in the new framework and two examples are provided: the `HMMWV_DoubleWishboneFront_replica.json` file contains an exact replica of the HMMWV front double wishbone suspension defined in `HMMWV_DoubleWishboneFront.json`, while `UAZBUS_FrontSAELeafspringAxle_replica.json` replicates the front suspension defined in `UAZBUS_FrontSAELeafspringAxle.json`; the latter example illustrates the definition of a suspension subsystem that includes both mirrored and non-mirrored components.
+
+See `demo_VEH_WheeledVehicle` and `demo_VEH_SuspensionTestRig` which can be modified appropriately to use a HMMWV or UAZ vehicle with the new suspension specifications.
+
+### [Changed] CMake configuration and utility build scripts
+
+For consistency, the following changes were made to some of the Chrono CMake configuration scripts:
+  - Chrono::Irrlicht module: `IRRLICHT_INSTALL_DIR` replaces the old IRRLICHT_ROOT
+  - Chrono::Multicore module: `BLAZE_INSTALL_DIR` replaces the old BLAZE_DIR
+  - Chrono::Vehicle module: `IRRKLANG_INSTALL_DIR` and `IRRKLANG_LIBRARY` replace the old CH_IRRKLANG_SDKDIR and CH_IRRKLANGLIB, respectively
+  - Chrono::Synchrono module: `fastrtps_INSTALL_DIR` replaces the old fastrtps_ROOT
+  - Chrono::OpenGL module: finding the necessary GL dependencies (GLEW and GLFW) now relies on CMake project configuration scripts for these libraries. As such, unless automatically detected, the user must set the CMake variables `GLEW_DIR` and `GLFW3_DIR`. For systems where default packages for GLEW and GLFW do *not* install their CMake project configuration scripts (e.g., Ubuntu), see below for information on building these libraries from sources.  For the headers-only GLM dependency, the user must set `GLM_INCLUDE_DIR`.
+
+To help the configuration of certain Chrono modules, we added several scripts (for both Windows and Linux) to build dependencies from sources. The following scripts are available under contrib/build-scripts:
+  - `opencrg/buildOpenCRG.bat` and `opencrg/buildOpenCRG.sh` can be used to build and install the OpenCRG library. Optionally, the script can first download the sources for version 1.1.2 of OpenCRG from a GitHub repository.
+  - `opengl/buildGL.bat` and `opengl/buildGL.sh` can be used to build and install the GLEW, GLFW, and GLM dependencies for Chrono::OpenGL and Chrono::Sensor. The sources for these libraries are (optionally) downloaded from their respective SourceForce repositories. These scripts configure, build, and install all 3 necessary GL libraries under a common user-specified directory.
+  - `vsg/buildVSG.bat` and `vsg/buildVSG.sh` can be used to build and install all dependencies required for the Chrono::VSG module. Their sources can be optionally be downloaded from their respective GitHub repositories. These scripts are provided as a more flexible and robust alternative to the vsgFramework approach to installing the necessary VSG dependencies. The buildVSG scripts install all necessary VSG libraries (VulkanSceneGraph, vsgXchange, vsgImGui, ImGui, ImPlot, vsgExamples, and assimp) under a common, user-specified directory.
+Follow the instructions listed in comments at the top of each one of the above build scripts.
+
+Finally, the scripts `buildChrono.bat` (for Windows), `buildChrono.sh` (for Linux), and `buildChronoMac.sh` (for MacOS) are provided as examples of CMake configuration for the various Chrono modules. They should be copied to a different directory and modified to reflect the setup on the user machine and to enable only those Chrono modules of interest. When executed, these scripts run the CMake configuration of Chrono and generate the files for building the Chrono libraries, as appropriate on each platform.
+
+
+### [Added] SPHTerrain - continuum representation method for deformable terrain
+
+A new Chrono::Vehicle terrain class, SPHTerrain, was added to model deformable terrain using the Continuum Representation Method (CRM), an SPH-based formulation that leverages the Chrono::FSI module.  An SPHTerrain can be created from data files with positions of SPH particles and BCE markers read from data files (these positions are assumed to be provided on an integer grid, in multiples of the initial separation of SPH particles) or from a height-map image file.  In addition, this type of terrain permits definition of rigid obstacles that may be embedded, partially or fully, in the terrain volume (to model, for example, embedded rocks); currently, rigid obstacles must be specified with trimesh geometry read from a Wavefront OBJ file.  Run-time visualization is supported through `ChFsiVisualizationVSG` or `ChFsiVisualizationGL` which leverage the Chrono::VSG and Chrono::OpenGL modules, respectively. See `demo_VEH_SPHTerrain_Obstacles`, `demo_VEH_SPHTerrain_WheeledVehicle`, and `demo_VEH_SPHTerrain_Viper`.
+
+### [Added] TMSimple tire model
+
+A new tire model (`ChTMsimple`) was added to Chrono::Vehicle. This tire model is of "force element" type and shares part of its formulation with the TMeasy model (both of these tire models were developed by Wolfgang Hirscberg from TU Graz in Austria). The goal of TMsimple is to provide a simple handling tire model with fewer parameters than TMeasy while still providing realistic (albeit reduced) functionality.
+
+The TMsimple model
+- calculated horizontal patch forces based on single functions (whereas TMeasy requires three piece-wise definitions)
+- considers degressive influence of the vertical force Fz
+- calculates rolling resistance
+
+TMeasy requires 5 parameters to define its basic function for Fx and Fy: (1) slope at zero, (2) slip at force maximum, (3) maximal force, (4) slip at sliding initiation, and (5) sliding force. In contrast, TMsimple needs only 3 parameters: (1) slope, (2) maximal force, and (3) force at infinite slip.  A complete parameter set for Fx(sx,Fz) and Fy(sy,Fz) has 20 items for TMeasy and only 12 for TMsimple. Chrono’s TMsimple implementation has a new stand-still/low speed algorithm for friction forces. It is not part of TMsimple itself, and could be adapted to other handling tire models as well.
+
+### [Added] Blender plug-in for post-process visualization
+
+A new tool has been developed. It is an add-on for the [Blender](http://blender.org) rendering/modeling/animation software, that allows importing Chrono simulation in the GUI of Blender. From the C++ side, the only requirement is using some export functions of the POSTPROCESS module. This aims at replacing the old POVray post-processing pipeline.
+
+- Interactive 3D navigation of the scenes, and timeline scrubbing.
+- Allows rendering of high-quality photo-realistic animations, using the Cycles physically-based unbiased path tracer that is available in Blender.
+- The user can optionally modify the Chrono assets, once imported, by attaching custom materials, special FXs, more detailed meshes, etc. 
+- Visualization of auxiliary references (center of masses, link markers etc)
+- False color rendering of mesh attributes and glyph attributes, using colormaps
+- Speed optimizations for the ChParticleCloud shapes
+
+Details on this new tool is available at [the Chrono::Blender page](https://api.projectchrono.org/development/introduction_chrono_blender.html) on the ProjectChrono.org website.
+
+
+### [Added] VSG-based run-time visualization module
+
+A new module (`Chrono::VSG`) was added to provide an alternative for run-time visualization. This module uses VulkanSceneGraph ([VSG](https://vsg-dev.github.io/VulkanSceneGraph/)), a new cross-platform, high-performance scene graph library built upon the Vulkan graphics/compute API. Chrono::VSG implements most of the functionality expected by the base Chrono visual system; currently, missing support includes FEA and modal analysis visualizations (work in progress). Except for this, the `ChVisualSystemVSG` is interchangeable with `ChVisualSystemIrrlicht` with minor changes to user code. See for example the various Chrono MBS and vehicle demos that have been modified to work with either run-time visualization system.  
+
+Unlike Irrlicht, VulkanSceneGraph provides a modern scene graph library which is under active development. Besides the many features provided by the core VSG library, the GUI system provided by the companion [vsgImGui](https://github.com/vsg-dev/vsgImGui) project offers the full set of capabilities of [ImGui](https://github.com/ocornut/imgui). The basic UI elements already exposed in `ChVisualSystemVSG` and `ChVehicleVisualSystemVSG` will be further expanded.
+
+Simultaneous with the introduction of Chrono::VSG, we have modified the `ChVisualSystem` API (and reflected these changes in both `ChVisualSystemIrrlicht` and `ChVisualSystemVSG`) to provided new capabilities, such as the definition and rendering of visual models that are not associated with a Chrono physics item.
+
+### [Changed] Support for linear and nonlinear vehicle force elements
+
+The various pre-defined functors for use with TSDA and RSDA elements in vehicle models have been refactored for consistency. These include linear and nonlinear springs, dampers, and spring-damper force elements with optional bump stops (see the definitions in `src/chrono_vehicle/ChSubsysDefs.h`).  In addition, a new TSDA functor, `MapSpringDamper` allows for the definition of a general non-linear spring-damper (depending on both deformation and velocity) specified through bi-linear interpolation of tabular data.
+
+All the pre-defined TSDA and RSDA functors can be specified in JSON files; consult the various JSON files for wheeled vehicle suspension systems in the Chrono data directory.
+
 ## Release 8.0.0 - 2022-12-21
 
 ### [Added] Chrono::Sensor features and updates
@@ -87,7 +532,7 @@ Change Log
 **New Features**
 
  - Added fog to camera. This uses an exponential blending function with scattering coefficient. Can be enabled on a per-camera basis in the camera constructed. Parameters for fog scattering, color, and max visible distance are set in `ChScene`: `SetFogScattering(float coefficient)`, `SetFogColor(ChVector<float> color)` and `SetFogScatteringFromDistance(float distance)`.
- - Added radial distortion model (standard model in matlab). The input parameters are the correction parameters that can be calibrated from distorted images. The FOV lens model and radial model use the effective FOV parameter. Instead, they use the calibrated parameter as would be obtained by calibrating the focal distance.
+ - Added radial distortion model (standard model in Matlab). The input parameters are the correction parameters that can be calibrated from distorted images. The FOV lens model and radial model use the effective FOV parameter. Instead, they use the calibrated parameter as would be obtained by calibrating the focal distance.
   - Radial model set as: `CameraLensModelType::RADIAL` in the camera
   - Parameters configured as `ChCameraSensor::SetRadialLensParameters(ChVector<float> params)`
  - Allow Chrono::Sensor to be built when GLFW library and headers are not found
@@ -135,7 +580,7 @@ If a Bezier curve is declared as closed, it is internally modified to add a new 
 The public API of Chrono::FSI was further refined to better encapsulate and hide the underlying CUDA implementation from the user.  
 - Only two header files need to be included in most Chrono::FSI user programs: `ChSystemFsi.h` which contains the definition of the top-level FSI system class and `ChDefinitionsFsi.h` which defines various enumerations for problem settings and solution methods.
 - Optionally, the `ChVisualizationFsi.h` header can be included to allow access to OpenGL-based run-time visualization.
-- Simulation parameters (defining the problem and the solution method) can be still be set as before through a specification file in JSON format.  However, each parameter can also be programatically set through various `Set***` methods of `ChSystemFsi`.
+- Simulation parameters (defining the problem and the solution method) can be still be set as before through a specification file in JSON format.  However, each parameter can also be programmatically set through various `Set***` methods of `ChSystemFsi`.
 - The order in which various parameters are set is now arbitrary.  All dependent calculations are performed in the `ChSystemFsi::Initialize()` function which **must** be invoked once all setup is completed and before the start of the simulation loop.
 - The set of accessor `Get***` functions of `ChSystemFsi` was enlarged to provide access to various simulation parameters (possibly defined in an input JSON file). 
 - All public API functions in `ChSystemFsi` and `ChVisualizationFsi` only use C++ base types and Chrono types (such as ChVector<>, ChQuaternion<>, etc.)
@@ -145,7 +590,7 @@ The new optional run-time visualization support for Chrono::FSI simulation requi
 
 ### [Added] User-defined SMC contact force calculation
 
-A mechanism was added for overriding the default contact force calculation for a collision pait in an SMC system. The user must supply a class derived from `ChSystemSMC::ChContactForceSMC` and register it through a call to `ChSystemSMC::SetContactForceAlgorithm`.
+A mechanism was added for overriding the default contact force calculation for a collision pair in an SMC system. The user must supply a class derived from `ChSystemSMC::ChContactForceSMC` and register it through a call to `ChSystemSMC::SetContactForceAlgorithm`.
 
 The user is responsible to implement the virtual function 
 ```cpp
@@ -182,7 +627,7 @@ The entire mechanism for defining visualization models, shapes, and materials, a
 
 **Defining visualization models**
 
-The new nechanism for defining visualization shapes and materials for a Chrono physics item is illustrated in the following typical sequence:
+The new mechanism for defining visualization shapes and materials for a Chrono physics item is illustrated in the following typical sequence:
 ```cpp
     // Create a visual material and set properties
     auto vis_mat = chrono_types::make_shared<ChVisualMaterial>();
@@ -230,7 +675,7 @@ A typical sequence for creating and attaching an Irrlicht-based visualization sy
 
 Notes:
 - Various parameters (such as windows size, windows title, camera vertical direction) can be set with various `Set***` methods.  These must be called before the visual system is initialized with ChVisualSystemIrrlicht::Initialize().
-- After the call to `Initialize`, additional rendering elements (such as lights, a sky box, a camera) can be added to the visualizatioon system with various `Add***` methods.
+- After the call to `Initialize`, additional rendering elements (such as lights, a sky box, a camera) can be added to the visualization system with various `Add***` methods.
 - Once the visual system is initialized **and** attached to the Chrono system, all currently defined visual models are processed and Irrlicht nodes created.  
 - If visual models are created at a later time, these must be converted to Irrlicht nodes through a call to `ChVisualSystemIrrlicht::BindAll()` (to process all visual models in the Chrono system) or to `ChVisualSystemIrrlicht::BindItem` (to process the visual model for the specified Chrono physics item).
 
@@ -260,7 +705,7 @@ Finally, note that all functions in the public API were changed to use only Chro
 
 **Vehicle-specific visualization system**
 
-While a Chrono::Vehicle simulation can be rendered like any other Chrono system simulation (using either `ChVisualSystemIrrlicht` or `ChVisualSystemOpenGL`), customized derived classes are provided for Irrlicht-based rendering.  These classes provide additional rendering options specific to vehicle systems, including vehicle state information overlay text.  Use `ChWheeledVehicleVisualSystemIrrlicht` for wheeld vehicles and `ChTrackedVehicleVisualSystemIrrlicht` for tracked vehicles.
+While a Chrono::Vehicle simulation can be rendered like any other Chrono system simulation (using either `ChVisualSystemIrrlicht` or `ChVisualSystemOpenGL`), customized derived classes are provided for Irrlicht-based rendering.  These classes provide additional rendering options specific to vehicle systems, including vehicle state information overlay text.  Use `ChWheeledVehicleVisualSystemIrrlicht` for wheeled vehicles and `ChTrackedVehicleVisualSystemIrrlicht` for tracked vehicles.
 
 To enable the vehicle-specific features, attach the vehicle system to the visualization system, using `ChVehicleVisualSystem::AttachVehicle`.
 
@@ -298,28 +743,28 @@ We took this opportunity to make a small set of minor API changes, most of them 
 - ChIrrApp::AddTypicalLogo() was renamed to ChIrrApp::AddLogo().
 - ChIrrApp::AddTypicalCamera() was renamed to ChIrrApp::AddCamera().
 - ChIrrApp::AddTypicalSky() was renamed to ChIrrApp::AddSkyBox().
-- ChIrrApp::AddTypicalLights() was changed to always construct two point lights with default settings (postions, radii, and colors).  The positions of these lights are different for a Y or Z camera vertical direction.  A user interested in changing the settings of the default lights should use the function ChIrrApp::AddLight() which allows specifying position, radius, and color.
+- ChIrrApp::AddTypicalLights() was changed to always construct two point lights with default settings (positions, radii, and colors).  The positions of these lights are different for a Y or Z camera vertical direction.  A user interested in changing the settings of the default lights should use the function ChIrrApp::AddLight() which allows specifying position, radius, and color.
 - ChVehicleIrrApp::SetSkyBox() was obsoleted (the Chrono sky box is automatically added).
 
 ### [Added] Modal analysis module
 
 A new module `MODULE_MODAL` has been added. The module uses an external dependency (the [Spectra](https://spectralib.org/) library for eigenvalue computation). 
-Follow the [installation guide](@ref module_modal_installation) for instructions on how to enable it.
+Follow the Chrono::Modal installation guide for instructions on how to enable it.
 
 The new class `ChModalAssembly` offer three main functionalities:
 
 - **undamped modal analysis** of all the system being created within the sub assembly will be obtained. The modes and frequencies can be also displayed interactively if using the Irrlicht visualization system. 
-	- The subassembly can also contain constraints between its sub parts. 
+	- The sub-assembly can also contain constraints between its sub parts. 
 	- Rigid modes (for free-free structures) are supported
-	- A custom genaralized, sparse, constrained eigenvalue solver of Krylov-Schur type allows the computation of only the n lower modes. This allows handling large FEA systems. 
+	- A custom generalized, sparse, constrained eigenvalue solver of Krylov-Schur type allows the computation of only the n lower modes. This allows handling large FEA systems. 
 	
 - **damped (complex) modal analysis** of the subsystem: this is like the previous case, but damping matrix is used too, hence obtaining complex eigenvalues/eigenvectors. Damping factors for the modes are output too, indicating stability or instability. *NOTE: while we wait that Spectra will enable complex eigenvalues in Krylov-Schur, a more conventional solver is used, that is not sparse - hence requiring more time and memory*
 
-- **modal reduction** of the subassembly. Example of a scenario where this is useful: you have a tower modeled with thousands of finite elements, but you are just interested in the small oscillations of its tip, because you will mount a windmill on its tip. If you simulate thousands of finite elements just for this purpose, you waste CPU time, hence a modal reduction of the tower will discard all the DOFs of the finite elements and represent the overall behaviour of the tower using just few modal shapes (ex. fore aft bending, lateral bending, etc.), with extreme CPU performance at the cost of a small reduction of fidelity.
+- **modal reduction** of the sub-assembly. Example of a scenario where this is useful: you have a tower modeled with thousands of finite elements, but you are just interested in the small oscillations of its tip, because you will mount a windmill on its tip. If you simulate thousands of finite elements just for this purpose, you waste CPU time, hence a modal reduction of the tower will discard all the DOFs of the finite elements and represent the overall behavior of the tower using just few modal shapes (ex. fore aft bending, lateral bending, etc.), with extreme CPU performance at the cost of a small reduction of fidelity.
 	- Bodies and FEA nodes can be added to the subassebly as *internal*  or *boundary* interface nodes. Later one can call `ChModalAssembly::SwitchModalReductionON(int n_modes)` to replace the complexity of the internal nodes with few `n_modes` modal coordinates.
 	- Boundary interface nodes can be connected to the rest of the multibody system as usual, using constraints, forces, etc.
 	- Internal constraints can be used between internal nodes. Their effect too will be condensed in the modal reduction.
-	- *NOTE: at the moment only linear dynamics is supported for the subassembly, in the sense that the subassembly cannot withstand large rotations, ex. in a helicopter blade. Future developments will address this*
+	- *NOTE*: at the moment only linear dynamics is supported for the sub-assembly, in the sense that the sub-assembly cannot withstand large rotations, ex. in a helicopter blade. Future developments will address this
 
 
 ### [Added] Callback mechanism for collision debug visualization
@@ -397,7 +842,7 @@ In other words, each line of this ASCII file should now contain:<br>
 
 ### [Fixed]
 
-- SIMD detection is combined into one cmake script
+- SIMD detection is combined into one CMake script
 - Fixed SIMD feature detection with Clang, allowing support for Apple-M1 and generic AArch64 CPUs
 
 ### Release 7.0.2 - 2022-04-03
@@ -496,7 +941,7 @@ The design of the co-simulation framework is such that all inter-node co-simulat
 For consistency with the main Chrono module and other optional Chrono modules, the Chrono::FSI API was changed as follows: 
 
 - The user's interaction with the Chrono::FSI module was streamlined by exposing in the public API a single Chrono::FSI system object (of type `ChSystemFsi` ) and hiding the underlying implementation in a private class. 
-- User code only needs to include one Chrono::Fsi header in their project, namely `chrono_fsi/ChSystemFsi.h` and need not include any of the utility header files from `utils/`.
+- User code only needs to include one Chrono::FSI header in their project, namely `chrono_fsi/ChSystemFsi.h` and need not include any of the utility header files from `utils/`.
 - Users can use standard C++ types to declare a scalar, and use Chrono types (`ChVector`, `ChQuaternion`, etc) to declare vectors, quaternions, etc. 
 - The initialization of the parameters from a JSON file was changed from fsi::utils::ParseJSON() to `myFsiSystem.SetSimParameter()`, assuming the user has created an FSI system `myFsiSystem`. 
 - A new function was added to set periodic boundary condition: `ChSystemFsi::SetBoundaries()`. 
@@ -506,7 +951,7 @@ For consistency with the main Chrono module and other optional Chrono modules, t
 - The functions used to add BCE particles were changed along the same lines; for instance, to add BCE particles for a cylinder, use `ChSystemFsi::AddBceCylinder()`. 
 - The function used to output data was changed from fsi::utils::PrintToFile() to `ChSystemFsi::PrintParticleToFile()`. 
 
-See the updated FSI demo programs for usage of the new Chrono::Fsi API.
+See the updated FSI demo programs for usage of the new Chrono::FSI API.
 
 **Added - Option to build Chrono::FSI in single precision**
 
@@ -522,7 +967,7 @@ See the updated FSI demo programs for usage of the new Chrono::Fsi API.
 
 **Changed - Refactored sensor code:**
  - sensors have been moved to `src/chrono_sensor/sensors/` to cleanup directory structure
- - all optix-dependent code was moved to `src/chrono_sensor/optix` to consolidate the dependency
+ - all OptiX-dependent code was moved to `src/chrono_sensor/optix` to consolidate the dependency
 
 **Changed - IMU to accelerometer and gyroscope:**
  - Split the IMU sensor into its components (ChAccelerometerSensor and ChGyroscopeSensor) to facilitate additional sensors. Using both sensors together with same update rate will produce the same behavior as the original IMU. These sensors are still maintained under `ChIMUSensor.h and ChIMUSensor.cpp`
@@ -533,7 +978,7 @@ See the updated FSI demo programs for usage of the new Chrono::Fsi API.
   ```
 **Added - Magnetometer:**
  - Added magnetometer sensor alongside accelerometer and gyroscope. Sensor is maintained in `ChIMUSensor.h` and `ChIMUSensor.cpp`. 
- - Returns a magentic field strength vector based on the orientation of the sensor, and the GPS location of the sensor and simulation.
+ - Returns a magnetic field strength vector based on the orientation of the sensor, and the GPS location of the sensor and simulation.
  - Can be permuted with noise using same noise models available for accelerometer and gyroscope.
   ```cpp
   ChMagnetometerSensor(std::shared_ptr<chrono::ChBody> parent, float updateRate, chrono::ChFrame<double> offsetPose, std::shared_ptr<ChNoiseModel> noise_model, ChVector<double> gps_reference);
@@ -565,15 +1010,15 @@ See the updated FSI demo programs for usage of the new Chrono::Fsi API.
 
 **Changed - Automatic mesh and object instancing:**
  - Objects that use the same mesh will automatically instance the mesh (instanced if using same chrono::geometry::ChTriangleMeshConnected)
- - Removed the ability to add instanced objects explicitely.
+ - Removed the ability to add instanced objects explicitly.
  - Recommended instancing is to create single ChTriangleMeshConnected, then adding that with many scales (using ChTriangleMeshShape) and positions (using ChBody).
 
 **Changed - Shaders for visualization:**
- - Improved the material shaders to support physically-based materials and phong materials in the same scene. 
+ - Improved the material shaders to support physically-based materials and Phong materials in the same scene. 
  - Shading calls do NOT change API, but WILL be visible on objects.
- - Expanded parameters contained in `chrono::ChVisualMaterial` to include metalic, roughness, and other textures as well as whether to use a specular or metalic workflow. Will be detected for meshes loaded from file.
+ - Expanded parameters contained in `chrono::ChVisualMaterial` to include metallic, roughness, and other textures as well as whether to use a specular or metalic workflow. Will be detected for meshes loaded from file.
 
-**Added - Global Illumination with Optix Denoiser:**
+**Added - Global Illumination with OptiX Denoiser:**
 Added option for cameras to use global illumination with a denoiser to reduce stochastic noise imparted by the ray tracing algorithm. 
  - enable global illumination and gamma correction exponent in camera constructor:
  ``` cpp
@@ -629,7 +1074,7 @@ ChLidarSensor(std::shared_ptr<chrono::ChBody> parent,
 ```
 
 **Added - Radar sensor:**
-- A radar sensor was added, with the initial version similar to lidar. Will return set of points that include range, azimuth, elevation, doppler velocity, ampliture of detection, and object id used for clustering
+- A radar sensor was added, with the initial version similar to lidar. Will return set of points that include range, azimuth, elevation, doppler velocity, amplitude of detection, and object id used for clustering
 - radar is configurable based on update rate, position, vertical and horizontal resolutions, vertical and horizontal field of view, and maximum distance.
 ``` cpp
 ChRadarSensor(std::shared_ptr<chrono::ChBody> parent,
@@ -752,7 +1197,7 @@ Moments can be applied at any point within these elements just like forces.  For
 
 - For `ChElementBeamANCF_3243` and `ChElementBeamANCF_3333`, the contacts are calculated using a capsule shape between the two end nodes whose radius is equal to the diagonal length of the reference cross-section shape.  This is the same approach as `ChElementBeamEuler`.
 
-- For `ChElementShellANCF_3443`, a skin at the midsurface is used just like `ChElementShellANCF_3423` and `ChElementShellANCF_3443`.
+- For `ChElementShellANCF_3443`, a skin at the mid-surface is used just like `ChElementShellANCF_3423` and `ChElementShellANCF_3443`.
 
 - For `ChElementHexaANCF_3813` and `ChElementHexaANCF_3843`, a linear quadrilateral face is added to the free faces just like `ChElementHexaANCF_3813_9`.
 
@@ -777,7 +1222,7 @@ Moments can be applied at any point within these elements just like forces.  For
 
 6. Support was added for specifying and applying user-defined external forces on a vehicle's chassis.  Such forces are defined in a class derived from `ChChassis::ExternalForce` which should override the `Update` method (to calculate new values for the force and/or its application point at each synchronization of the chassis state).  An arbitrary number of such forces can be defined and added using `ChChassis::AddExternalForce`.
 
-7. A demonstration program (`demo_VEH_RenderJSON`) was created to illustrate visualization of a Chrono::Vehicle model based on JSON specificatin files.  Using the Chrono::OpenGL run-time visualization module, this demo program allows re-creating the vehicle model after a potential change to one or more JSON specification files (use key `U` to trigger).
+7. A demonstration program (`demo_VEH_RenderJSON`) was created to illustrate visualization of a Chrono::Vehicle model based on JSON specification files.  Using the Chrono::OpenGL run-time visualization module, this demo program allows re-creating the vehicle model after a potential change to one or more JSON specification files (use key `U` to trigger).
 
 ### [Added] New robot models
 
@@ -789,9 +1234,9 @@ Two new models were added to the collection Chrono robot models:
   ```
   This independent steering control allows the rover model to conduct many types of steering maneuvers. The linear DC motor model in Curiosity is similar to the DC motor in Viper (see below).
 
-  `demo_ROBOT_Curiosity_SCM` illustrates the rover crossiung symmetric obstacles on SCM deformable terrain and `demo_ROBOT_Curioisty_Rigid` shows the rover being operated on rigid terrain while climbing a stair-shaped obstacle. Both demos show the initialization process of the Curiosity rover model and the simulated Rocker-Bogie suspension system when crossing obstacles.
+  `demo_ROBOT_Curiosity_SCM` illustrates the rover crossing symmetric obstacles on SCM deformable terrain and `demo_ROBOT_Curioisty_Rigid` shows the rover being operated on rigid terrain while climbing a stair-shaped obstacle. Both demos show the initialization process of the Curiosity rover model and the simulated Rocker-Bogie suspension system when crossing obstacles.
 
-- The **Turtlebot** is a common basic robot used as demonstration in various robot siomulation packages (e.g., Gazebo/ROS). This robot consists of two drive wheels and one passive wheel. The steering function can be controlled by calling 
+- The **Turtlebot** is a common basic robot used as demonstration in various robot simulation packages (e.g., Gazebo/ROS). This robot consists of two drive wheels and one passive wheel. The steering function can be controlled by calling 
   ```cpp
   SetMotorSpeed(float rad_speed, WheelID id)
   ```
@@ -825,7 +1270,7 @@ SetMotorStallTorque(double torque, WheelID id)
 
 ### [Added] New multicore collision detection system
 
-The collision detection system previously embedded in Chrono::Multicore was updated and also made available to the usual Chrono systems (ChSystemNSC and ChSystemSMC) as an alternative to the Bullet-based collision detection system.  The new collision detection system (`ChCollisionSystemChrono`) uses a single-level adaptive grid for broadphase; for the narrowphase, it uses analytical intersection functions for certain pairs of known primitive shapes with fallback to an MPR (Minkovski Portal Refinement) alhgorithm.  In addition to the features previously available in Chrono::Multicore, the new stand-alone collision detection system includes additional analytical collision functions (e.g., for box-box interaction), as well as support for ray intersection.
+The collision detection system previously embedded in Chrono::Multicore was updated and also made available to the usual Chrono systems (ChSystemNSC and ChSystemSMC) as an alternative to the Bullet-based collision detection system.  The new collision detection system (`ChCollisionSystemChrono`) uses a single-level adaptive grid for broadphase; for the narrowphase, it uses analytical intersection functions for certain pairs of known primitive shapes with fallback to an MPR (Minkovski Portal Refinement) algorithm.  In addition to the features previously available in Chrono::Multicore, the new stand-alone collision detection system includes additional analytical collision functions (e.g., for box-box interaction), as well as support for ray intersection.
 
 The new collision system requires the `Thrust` library which is included in the CUDA toolkit or stand-alone (https://github.com/NVIDIA/thrust). If Thrust is available at configuration time, the `ChConfig.h` header defines a macro `CHRONO_COLLISION` (which can be used in user code to check availability of the new collision detection system).
 
@@ -903,20 +1348,20 @@ Some of the salient features of the new multicore collision detection system are
 - multicore parallel broadphase and narrowphase 
 - definition of the broadphase grid with fixed number of cells, fixed cell dimensions, or fixed shape density.
 - support for an optional "active" axis-aligned bounding box (objects leaving this area are automatically disabled).
-- ray casting is thread safe (i.e., multiple ray intersectino tests can be done concurrently, for example in a parallel OpenMP for loop).
+- ray casting is thread safe (i.e., multiple ray intersection tests can be done concurrently, for example in a parallel OpenMP for loop).
 
 **Limitations.**
 The main limitation of the new multicore collision detection system is that removal of collision models from the collision system is currently not supported.  As such, bodies with collision enabled cannot be removed from the system once added.
 
 **Work in progress.**
-The following enhancements are currenty under development:
+The following enhancements are currently under development:
 - ray intersection with generic convex shapes
 - support for collision of flexible bodies
 
 
 ### [Added] Miscellaneous additions to Chrono::Gpu
 
-**Added - Specification of the compuational domain**
+**Added - Specification of the computational domain**
 
 The location of the computational domain can now be specified (in addition to its dimensions) through a fourth optional constructor argument of `ChSystemGpu` and `ChSystemGpuMesh`. By default, the axis-aligned computational domain is centered at the origin.  As such,
 ```cpp
@@ -980,7 +1425,7 @@ void SetBCPlaneRotation(size_t plane_id, ChVector<double> center, ChVector<doubl
 
 ### [Added] New loads for ChNodeFEAxyzrot
 
-New classes have been added for creating loads (with automatic jacobian generation that allow also stiff loads) for ChNodeFEAxyzrot nodes, in detail:
+New classes have been added for creating loads (with automatic Jacobian generation that allow also stiff loads) for ChNodeFEAxyzrot nodes, in detail:
 - on a node of ChNodeFEAxyzrot type (user defined etc.)
 - between two ChNodeFEAxyzrot (user defined, spherical bushing, plastic bushing, generic bushing, etc.)
 - between a ChNodeFEAxyzrot and a ChBody (user defined, spherical bushing, plastic bushing, generic bushing, etc.)
@@ -992,7 +1437,7 @@ A new algorithm for analytical collision detection for box-box interactions was 
 For collisions involving two boxes, this new algorithm is now used instead of the default MPR algorithm (when using narrow phase type `NARROWPHASE_R` or `NARROWPHASE_HYBRID_MPR`).
 
 The new algorithm relies on the 15-axes test of Gottschalk, Lin, and Manocha (Siggraph 1996) for finding the direction of minimum intersection between two oriented boxes and then the collision detection is special-cased for all possible combinations of interacting features from the two boxes (9 different cases).
-The analytical algorithm can produce up to 8 collision pairs and works with or without a collision envelope (thus being appropriate for both SMC and NSC contact forumlations).
+The analytical algorithm can produce up to 8 collision pairs and works with or without a collision envelope (thus being appropriate for both SMC and NSC contact formulations).
 
 ### [Added] Checkpointing capabilities in Chrono::Gpu
 
@@ -1019,7 +1464,7 @@ sys2.ReadCheckpointFile("checkpoint.dat");
 */
 ```
 
-`ChSystemGpu::ReadParticleFile` is used to load particle positions and velocities from a CSV file. It is useful if the particle information is meant to be supplied from a file rather than programatically.
+`ChSystemGpu::ReadParticleFile` is used to load particle positions and velocities from a CSV file. It is useful if the particle information is meant to be supplied from a file rather than programmatically.
 
 See demo_GPU_ballcosim for an example of using checkpointing.
 
@@ -1074,7 +1519,7 @@ The necessary data includes the SCM tangential force parameters, Mohr cohesion (
 
 - Eliminated the setting for differential ratio in the various driveline templates.
    To model a differential using the Chrono class `ChShaftsPlanetary`, this value must always be -1 (and represents the speed ratio of the inverted planetary) and is therefore hard-coded.
-   This affects driveline models that use the Chrono 1-D shaft modeling elements and the schema of associated JSON specifation files.
+   This affects driveline models that use the Chrono 1-D shaft modeling elements and the schema of associated JSON specification files.
 
 - Modified all shafts-based driveline templates to expect a positive value for the conical gear ratios.
 
@@ -1084,7 +1529,7 @@ The necessary data includes the SCM tangential force parameters, Mohr cohesion (
 - Modified the "Simple CVT" powertrain template.
    In the new template specification, a parameter for max engine speed was added and the parameter for critical engine speed was removed.
 
-- Added utility function to programatically generate a sprocket visualization mesh (`ChSprocket::CreateVisualizationMesh`).
+- Added utility function to programmatically generate a sprocket visualization mesh (`ChSprocket::CreateVisualizationMesh`).
    All Chrono::Vehicle sprocket profiles are defined as a succession of line segments and circle arcs. The default visualization is of type `VisualizationType::PRIMITIVES` and is a 3-D line for the profile.  The utility function `ChSprocket::CreateVisualizationMesh` creates a trimesh that can be used to visualize the sprocket when in `VisualizationType::MESH` mode.
 
 - Changed sign of sprocket angular speed reported by GetSprocketSpeed so that a positive value corresponds to forward vehicle movement.
@@ -1124,7 +1569,7 @@ The mechanism for specifying collision meshes in a `ChSystemGpuMesh` was changed
     unsigned int AddMesh(std::shared_ptr<geometry::ChTriangleMeshConnected> mesh,
                          float mass);
 ```
-from a Wavefron OBJ file:
+from a Wavefront OBJ file:
 ```cpp
     unsigned int AddMesh(const std::string& filename,
                          const ChVector<float>& translation,
@@ -1145,7 +1590,7 @@ The Wavefront OBJ file format requirement is changed. The nodal normal informati
 
 This should not impact the usage of meshes, since for a properly generated OBJ mesh, the orderings of nodes are in line with the outward normals. The users can however, restore the old behavior by calling `ChSystemGpuMesh::UseMeshNormals(true)` before `ChSystemGpuMesh::Initialize()`. If it is called, Chrono::Gpu module will try to rearrange the orderings of facet nodes so that the RHR normals agree with the normals given by the corresponding `vn` lines. 
 
-Chrono::Gpu module now outputs VTK meshes correctly by writing to files the nodal coordinates and connectivities, instead of triangle soups. It also no longer appends `_mesh` to the output filenames. Users can still write all meshes to a single file by 
+Chrono::Gpu module now outputs VTK meshes correctly by writing to files the nodal coordinates and connectivity, instead of triangle soups. It also no longer appends `_mesh` to the output filenames. Users can still write all meshes to a single file by 
 ```cpp
     void WriteMeshes(const std::string& outfilename) const;
 ```
@@ -1235,8 +1680,8 @@ Users of the Chrono::Multicore module should rerun CMake since the variables rel
 ### [Added] Geometric stiffness for Euler beams
 
 The geometric stiffness term is now introduced also for the chrono::ChElementBeamEuler beam element (Euler-Bernoulli corotational beams). It is turned on by default, and it is computed via an analytical expression, with minimal cpu overhead. 
-Note that geometric stiffness was already considered in IGA and ANCF beams, only the Euler beam was missing. Geometric stiffness is responsible of the fact that if you pull a thin beam like a string, its natural frequencies will increase, or viceversa, if you push it, its lateral stiffness decreases up to buckling instability. 
-Note that Euler beams ware able to simulate buckling or pulled-string stiffening even before, but only doing time integration in multiple time steps: instead, if one exported the M,K matrices for doing modal analysis of a pre-stretched Euler beam after a static analysis, the K matrix was missing the contribution of the geometric stiffness hence frequencies were uncorrect only in modal analysis.
+Note that geometric stiffness was already considered in IGA and ANCF beams, only the Euler beam was missing. Geometric stiffness is responsible of the fact that if you pull a thin beam like a string, its natural frequencies will increase, or vice-versa, if you push it, its lateral stiffness decreases up to buckling instability. 
+Note that Euler beams ware able to simulate buckling or pulled-string stiffening even before, but only doing time integration in multiple time steps: instead, if one exported the M,K matrices for doing modal analysis of a pre-stretched Euler beam after a static analysis, the K matrix was missing the contribution of the geometric stiffness hence frequencies were incorrect only in modal analysis.
 
 
 ### [Added] New Chrono::Synchrono module
@@ -1327,7 +1772,7 @@ for (auto& axle : trailer.GetAxles()) {
 
 ### [Added] New Chrono::Sensor module
 
-A new module (`Chrono::Sensor`) has been introduced to allow for sensor simulation within Chrono. `Chrono::Sensor` provides an interface for modeling and simulating sensors in the Chrono system to provide input for perception and control algorithms. For example, `Chrono::Sensor` may be used in combination with `Chrono::Vehicle` to simulate an autonomous vehicle equipped with multiple cameras and lidars. The module containes a API for modeling sensors with noise and distortion using a filter-graph paradigm for customization. Rendered sensors (camera and lidar) utilize ray tracing via OptiX to generate synthetic data.
+A new module (`Chrono::Sensor`) has been introduced to allow for sensor simulation within Chrono. `Chrono::Sensor` provides an interface for modeling and simulating sensors in the Chrono system to provide input for perception and control algorithms. For example, `Chrono::Sensor` may be used in combination with `Chrono::Vehicle` to simulate an autonomous vehicle equipped with multiple cameras and lidars. The module contains an API for modeling sensors with noise and distortion using a filter-graph paradigm for customization. Rendered sensors (camera and lidar) utilize ray tracing via OptiX to generate synthetic data.
 
 Parameterized models for camera, lidar, GPS and IMU have been added with the ability to extend or implement custom sensors.
 
@@ -1383,7 +1828,7 @@ The SCM deformable terrain was completely redesigned for improved performance. C
   ```cpp
   terrain.Initialize(filename, sizeX, sizeY, min_height, max_height, resolution);
   ```
-  where `filename` is the name of an image file, `sizeX` and `sizeY` specify the patchg extents in the reference plane, `min_height` and `max_height` define the height range (a purely black image pixel corresponds to min_height, a purely white pixel corresponds to max_height) and `resolution` is the SCM grid spacing.
+  where `filename` is the name of an image file, `sizeX` and `sizeY` specify the patch extents in the reference plane, `min_height` and `max_height` define the height range (a purely black image pixel corresponds to min_height, a purely white pixel corresponds to max_height) and `resolution` is the SCM grid spacing.
 
 - The option for adaptive mesh refinement was obsoleted. Performance of the new implementation is limited by the ray-casting operations and as such no additional benefits are obtained from starting with a coarse grid.
 

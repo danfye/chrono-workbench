@@ -23,9 +23,6 @@
 #include "chrono/utils/ChUtilsGenerators.h"
 #include "chrono/utils/ChUtilsGeometry.h"
 
-#include "chrono_fsi/ChSystemFsi.h"
-#include "chrono_fsi/ChVisualizationFsi.h"
-
 #include "chrono/fea/ChLinkDirFrame.h"
 #include "chrono/fea/ChLinkPointFrame.h"
 #include "chrono/fea/ChMesh.h"
@@ -34,6 +31,12 @@
 
 #ifdef CHRONO_PARDISO_MKL
     #include "chrono_pardisomkl/ChSolverPardisoMKL.h"
+#endif
+
+#include "chrono_fsi/ChSystemFsi.h"
+
+#ifdef CHRONO_OPENGL
+    #include "chrono_fsi/visualization/ChFsiVisualizationGL.h"
 #endif
 
 #include "chrono_thirdparty/filesystem/path.h"
@@ -152,15 +155,17 @@ int main(int argc, char* argv[]) {
     sysFSI.Initialize();
     auto my_mesh = sysFSI.GetFsiMesh();
 
+#ifdef CHRONO_OPENGL
     // Create a run-tme visualizer
-    ChVisualizationFsi fsi_vis(&sysFSI);
+    ChFsiVisualizationGL fsi_vis(&sysFSI);
     if (render) {
         fsi_vis.SetTitle("Chrono::FSI Flexible Flat Plate Demo");
-        fsi_vis.SetCameraPosition(ChVector<>(bxDim / 8, -3, 0.25), ChVector<>(bxDim / 8, 0.0, 0.25));
+        fsi_vis.AddCamera(ChVector<>(bxDim / 8, -3, 0.25), ChVector<>(bxDim / 8, 0.0, 0.25));
         fsi_vis.SetCameraMoveScale(1.0f);
-        fsi_vis.EnableBoundaryMarkers(false);
+        fsi_vis.EnableBoundaryMarkers(true);
         fsi_vis.Initialize();
     }
+#endif
 
 // Set MBS solver
 #ifdef CHRONO_PARDISO_MKL
@@ -186,7 +191,7 @@ int main(int argc, char* argv[]) {
     double time = 0.0;
     int current_step = 0;
 
-    ChTimer<> timer;
+    ChTimer timer;
     timer.start();
     while (time < t_end) {
         std::cout << current_step << " time: " << time << std::endl;
@@ -200,11 +205,13 @@ int main(int argc, char* argv[]) {
             fea::ChMeshExporter::WriteFrame(my_mesh, MESH_CONNECTIVITY, filename);
         }
 
+#ifdef CHRONO_OPENGL
         // Render SPH particles
         if (render && current_step % render_steps == 0) {
             if (!fsi_vis.Render())
                 break;
         }
+#endif
 
         sysFSI.DoStepDynamics_FSI();
 
@@ -231,7 +238,10 @@ void Create_MB_FE(ChSystemSMC& sysMBS, ChSystemFsi& sysFSI) {
     sysMBS.AddBody(ground);
 
     // Fluid representation of walls
-    sysFSI.AddContainerBCE(ground, ChFrame<>(), ChVector<>(bxDim, byDim, bzDim), ChVector<int>(2, 0, -1));
+    sysFSI.AddBoxContainerBCE(ground,                                         //
+                              ChFrame<>(ChVector<>(0, 0, bzDim / 2), QUNIT),  //
+                              ChVector<>(bxDim, byDim, bzDim),                //
+                              ChVector<int>(2, 0, -1));
 
     auto initSpace0 = sysFSI.GetInitialSpacing();
 

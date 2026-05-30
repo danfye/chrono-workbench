@@ -29,8 +29,10 @@ SET(MODEL_FILES
     subsystems/ACV_BrakeSimple.cpp
     subsystems/ACV_RigidTire.h
     subsystems/ACV_RigidTire.cpp
-    subsystems/ACV_SimplePowertrain.h
-    subsystems/ACV_SimplePowertrain.cpp
+    subsystems/ACV_EngineSimple.h
+    subsystems/ACV_EngineSimple.cpp
+    subsystems/ACV_AutomaticTransmissionSimple.h
+    subsystems/ACV_AutomaticTransmissionSimple.cpp
 )
 
 SET(PROGRAM
@@ -41,7 +43,7 @@ SET(PROGRAM
 # Additional include directories
 
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_LIST_DIR})
-INCLUDE_DIRECTORIES(${CH_IRRLICHTINC})
+INCLUDE_DIRECTORIES(${CH_IRRLICHT_INCLUDES})
 
 #--------------------------------------------------------------
 # Create the executable

@@ -53,9 +53,6 @@ class CH_VEHICLE_API ChWheeledVehicle : public ChVehicle {
     /// Get the name of the vehicle system template.
     virtual std::string GetTemplateName() const override { return "WheeledVehicle"; }
 
-    /// Get the powertrain attached to this vehicle.
-    virtual std::shared_ptr<ChPowertrain> GetPowertrain() const override { return m_powertrain; }
-
     /// Get all vehicle axle subsystems.
     const ChAxleList& GetAxles() const { return m_axles; }
 
@@ -92,9 +89,6 @@ class CH_VEHICLE_API ChWheeledVehicle : public ChVehicle {
 
     /// Get the subchassis system (if none present, returns an empty pointer).
     std::shared_ptr<ChSubchassis> GetSubchassis(int id) const { return m_subchassis[id]; }
-
-    /// Get a handle to the vehicle's driveshaft body.
-    virtual std::shared_ptr<ChShaft> GetDriveshaft() const override { return m_driveline->GetDriveshaft(); }
 
     /// Return the number of axles for this vehicle.
     virtual int GetNumberAxles() const = 0;
@@ -152,8 +146,12 @@ class CH_VEHICLE_API ChWheeledVehicle : public ChVehicle {
     /// This function should be called only after vehicle and tire initialization.
     void SetTireVisualizationType(VisualizationType vis);
 
+    /// Enable/disable collision for the wheel subsystems.
+    /// This function controls contact of the wheels with all other collision shapes in the simulation.
+    void SetWheelCollide(bool state);
+
     /// Enable/disable collision between the chassis and all other vehicle subsystems.
-    /// This only controls collisions between the chassis and the tire systems.
+    /// This only controls collisions between the chassis and the wheel/tire systems.
     virtual void SetChassisVehicleCollide(bool state) override;
 
     /// Enable/disable output from the suspension subsystems.
@@ -183,10 +181,6 @@ class CH_VEHICLE_API ChWheeledVehicle : public ChVehicle {
                         std::shared_ptr<ChWheel> wheel,
                         VisualizationType tire_vis = VisualizationType::PRIMITIVES,
                         ChTire::CollisionType tire_coll = ChTire::CollisionType::SINGLE_POINT);
-
-    /// Initialize the given powertrain system and associate it to this vehicle.
-    /// The powertrain is initialized by connecting it to this vehicle's chassis and driveline shaft.
-    void InitializePowertrain(std::shared_ptr<ChPowertrain> powertrain);
 
     /// Calculate total vehicle mass.
     /// This function is called at the end of the vehicle initialization, but can also be called explicitly.
@@ -266,7 +260,6 @@ class CH_VEHICLE_API ChWheeledVehicle : public ChVehicle {
     ChAxleList m_axles;                          ///< list of axle subsystems
     ChSteeringList m_steerings;                  ///< list of steering subsystems
     std::shared_ptr<ChDrivelineWV> m_driveline;  ///< driveline subsystem
-    std::shared_ptr<ChPowertrain> m_powertrain;  ///< associated powertrain system
     bool m_parking_on;                           ///< indicates whether or not parking brake is engaged
 };
 

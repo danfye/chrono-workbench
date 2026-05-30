@@ -67,10 +67,9 @@ ChBezierCurve::ChBezierCurve(const std::vector<ChVector<> >& points,
                              const std::vector<ChVector<> >& outCV,
                              bool closed)
     : m_points(points), m_inCV(inCV), m_outCV(outCV), m_closed(closed) {
-    size_t numPoints = m_points.size();
-    assert(numPoints > 1);
-    assert(inCV.size() == numPoints);
-    assert(outCV.size() == numPoints);
+    assert(m_points.size() > 1);
+    assert(inCV.size() == m_points.size());
+    assert(outCV.size() == m_points.size());
 
     if (m_closed) {
         auto d2 = (m_points.back() - m_points.front()).Length2();
@@ -555,7 +554,7 @@ ChVector<> ChBezierCurve::calcClosestPoint(const ChVector<>& loc, size_t i, doub
 
 // -----------------------------------------------------------------------------
 
-void ChBezierCurve::ArchiveOUT(ChArchiveOut& marchive)
+void ChBezierCurve::ArchiveOut(ChArchiveOut& marchive)
 {
     // version number
     marchive.VersionWrite<ChBezierCurve>();
@@ -570,7 +569,7 @@ void ChBezierCurve::ArchiveOUT(ChArchiveOut& marchive)
     marchive << CHNVP(m_paramTol);
 }
 
-void ChBezierCurve::ArchiveIN(ChArchiveIn& marchive)
+void ChBezierCurve::ArchiveIn(ChArchiveIn& marchive)
 {
     // version number
     /*int version =*/ marchive.VersionRead<ChBezierCurve>();

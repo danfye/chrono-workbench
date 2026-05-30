@@ -22,10 +22,11 @@
 #ifndef CH_VEHCOSIM_TRACKED_VEHICLE_NODE_H
 #define CH_VEHCOSIM_TRACKED_VEHICLE_NODE_H
 
-#include "chrono_vehicle/ChPowertrain.h"
+#include "chrono_vehicle/ChPowertrainAssembly.h"
 #include "chrono_vehicle/ChTerrain.h"
 #include "chrono_vehicle/ChDriver.h"
 #include "chrono_vehicle/tracked_vehicle/ChTrackedVehicle.h"
+#include "chrono_vehicle/ChVehicleVisualSystem.h"
 
 #include "chrono_vehicle/cosim/ChVehicleCosimTrackedMBSNode.h"
 
@@ -40,25 +41,23 @@ namespace vehicle {
 class CH_VEHICLE_API ChVehicleCosimTrackedVehicleNode : public ChVehicleCosimTrackedMBSNode {
   public:
     /// Construct a tracked vehicle node using the provided vehicle and powertrain JSON specification files.
-    ChVehicleCosimTrackedVehicleNode(const std::string& vehicle_json,    ///< vehicle JSON specification file
-                                     const std::string& powertrain_json  ///< powertrain JSON specification file
+    ChVehicleCosimTrackedVehicleNode(const std::string& vehicle_json,      ///< vehicle JSON specification file
+                                     const std::string& engine_json,       ///< engine JSON specification file
+                                     const std::string& transmission_json  ///< transmission JSON specification file
     );
 
     /// Construct a tracked vehicle node using the provided vehicle and powertrain objects.
     /// Notes:
     /// - the provided vehicle system must be constructed with a null Chrono system.
     /// - the vehicle and powertrain system should not be initialized.
-    ChVehicleCosimTrackedVehicleNode(std::shared_ptr<ChTrackedVehicle> vehicle,  ///< vehicle system
-                                     std::shared_ptr<ChPowertrain> powertrain    ///< powertrain system
+    ChVehicleCosimTrackedVehicleNode(std::shared_ptr<ChTrackedVehicle> vehicle,        ///< vehicle system
+                                     std::shared_ptr<ChPowertrainAssembly> powertrain  ///< powertrain system
     );
 
     ~ChVehicleCosimTrackedVehicleNode();
 
     /// Get the underlying vehicle system.
     std::shared_ptr<ChTrackedVehicle> GetVehicle() const { return m_vehicle; }
-
-    /// Get the underlying powertrain system.
-    std::shared_ptr<ChPowertrain> GetPowertrain() const { return m_powertrain; }
 
     /// Set the initial vehicle position, relative to the center of the terrain top-surface.
     void SetInitialLocation(const ChVector<>& init_loc) { m_init_loc = init_loc; }
@@ -87,8 +86,11 @@ class CH_VEHICLE_API ChVehicleCosimTrackedVehicleNode : public ChVehicleCosimTra
     /// Output vehicle data.
     virtual void OnOutputData(int frame) override;
 
-    /// Perform vehicle system synchronization before advancing the dynamics.
-    virtual void PreAdvance() override;
+    /// Perform vehicle system operations before advancing the dynamics.
+    virtual void PreAdvance(double step_size) override;
+
+    /// Perform vehicle system operations after advancing the dynamics.
+    virtual void PostAdvance(double step_size) override;
 
     /// Process the provided track shoe force (received from the corresponding track node).
     virtual void ApplyTrackShoeForce(int track_id, int shoe_id, const TerrainForce& force) override;
@@ -119,10 +121,13 @@ class CH_VEHICLE_API ChVehicleCosimTrackedVehicleNode : public ChVehicleCosimTra
 
     void WriteBodyInformation(utils::CSV_writer& csv);
 
+    virtual void OnRender() override;
+
   private:
-    std::shared_ptr<ChTrackedVehicle> m_vehicle;  ///< vehicle MBS
-    std::shared_ptr<ChPowertrain> m_powertrain;   ///< vehicle powertrain
-    std::shared_ptr<ChDriver> m_driver;           ///< vehicle driver
+    std::shared_ptr<ChTrackedVehicle> m_vehicle;         ///< vehicle MBS
+    std::shared_ptr<ChPowertrainAssembly> m_powertrain;  ///< vehicle powertrain
+    std::shared_ptr<ChDriver> m_driver;                  ///< vehicle driver
+    std::shared_ptr<ChVehicleVisualSystem> m_vsys;       ///< run-time visualization system
 
     ChVector<> m_init_loc;  ///< initial vehicle location (relative to center of terrain top surface)
     double m_init_yaw;      ///< initial vehicle yaw

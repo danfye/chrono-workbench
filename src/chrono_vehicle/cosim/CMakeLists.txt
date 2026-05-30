@@ -54,6 +54,8 @@ set(CV_COSIM_TIRE_FILES
 set(CV_COSIM_TERRAIN_FILES
     terrain/ChVehicleCosimTerrainNodeChrono.h
     terrain/ChVehicleCosimTerrainNodeChrono.cpp
+    terrain/ChVehicleCosimTerrainNodeRigid.h
+    terrain/ChVehicleCosimTerrainNodeRigid.cpp
     terrain/ChVehicleCosimTerrainNodeSCM.h
     terrain/ChVehicleCosimTerrainNodeSCM.cpp
 )
@@ -63,7 +65,6 @@ set(CV_COSIM_TERRAIN_FILES
 # Set flags, include paths, and libraries
 
 list(APPEND LIBRARIES ChronoEngine_vehicle)
-list(APPEND LIBRARIES ChronoModels_vehicle)
 list(APPEND LIBRARIES ChronoModels_robot)
 list(APPEND LIBRARIES "${MPI_CXX_LIBRARIES}")
 set(LINKER_FLAGS "${CH_LINKERFLAG_SHARED} ${MPI_CXX_LINK_FLAGS}")
@@ -72,8 +73,6 @@ set(CXX_FLAGS "${CH_CXX_FLAGS} ${MPI_CXX_COMPILE_FLAGS}")
 
 if(ENABLE_MODULE_MULTICORE)
   set(CV_COSIM_TERRAIN_FILES ${CV_COSIM_TERRAIN_FILES}
-      terrain/ChVehicleCosimTerrainNodeRigid.h
-      terrain/ChVehicleCosimTerrainNodeRigid.cpp
       terrain/ChVehicleCosimTerrainNodeGranularOMP.h
       terrain/ChVehicleCosimTerrainNodeGranularOMP.cpp)
   source_group("terrain" FILES)
@@ -122,9 +121,17 @@ if(ENABLE_MODULE_MUMPS)
 endif()
 
 if(ENABLE_MODULE_IRRLICHT)
-  set(INCLUDES "${INCLUDES};${CH_IRRLICHTINC}")
+  set(INCLUDES "${INCLUDES};${CH_IRRLICHT_INCLUDES}")
   set(CXX_FLAGS "${CXX_FLAGS} ${CH_IRRLICHT_CXX_FLAGS}")
   list(APPEND LIBRARIES ChronoEngine_irrlicht)
+  list(APPEND LIBRARIES ChronoEngine_vehicle_irrlicht)
+endif()
+
+if(ENABLE_MODULE_VSG)
+  set(CMAKE_CXX_STANDARD 17)
+  include_directories(${CH_VSG_INCLUDES})
+  list(APPEND LIBRARIES ChronoEngine_vsg)
+  list(APPEND LIBRARIES ChronoEngine_vehicle_vsg)
 endif()
 
 if(ENABLE_MODULE_OPENGL)

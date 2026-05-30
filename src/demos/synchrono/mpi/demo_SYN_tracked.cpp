@@ -22,11 +22,11 @@
 #include "chrono_vehicle/ChConfigVehicle.h"
 #include "chrono_vehicle/ChVehicleModelData.h"
 #include "chrono_vehicle/terrain/RigidTerrain.h"
-#include "chrono_vehicle/driver/ChIrrGuiDriver.h"
+#include "chrono_vehicle/driver/ChInteractiveDriverIRR.h"
 #include "chrono_vehicle/utils/ChUtilsJSON.h"
 
 #include "chrono_vehicle/tracked_vehicle/vehicle/TrackedVehicle.h"
-#include "chrono_vehicle/tracked_vehicle/utils/ChTrackedVehicleVisualSystemIrrlicht.h"
+#include "chrono_vehicle/tracked_vehicle/ChTrackedVehicleVisualSystemIrrlicht.h"
 
 #include "chrono_synchrono/SynConfig.h"
 #include "chrono_synchrono/SynChronoManager.h"
@@ -84,7 +84,8 @@ void LogCopyright(bool show);
 void AddCommandLineOptions(ChCLI& cli);
 void GetVehicleModelFiles(VehicleType type,
                           std::string& vehicle,
-                          std::string& powertrain,
+                          std::string& engine,
+                          std::string& transmission,
                           std::string& zombie,
                           double& cam_distance);
 
@@ -92,9 +93,9 @@ class IrrAppWrapper {
   public:
     IrrAppWrapper(std::shared_ptr<ChTrackedVehicleVisualSystemIrrlicht> app = nullptr) : m_app(app) {}
 
-    void Synchronize(const std::string& msg, const DriverInputs& driver_inputs) {
+    void Synchronize(double time, const DriverInputs& driver_inputs) {
         if (m_app)
-            m_app->Synchronize(msg, driver_inputs);
+            m_app->Synchronize(time, driver_inputs);
     }
 
     void Advance(double step) {
@@ -136,9 +137,9 @@ class DriverWrapper : public ChDriver {
             irr_driver->Advance(step);
     }
 
-    void Set(std::shared_ptr<ChIrrGuiDriver> irr_driver) { this->irr_driver = irr_driver; }
+    void Set(std::shared_ptr<ChInteractiveDriverIRR> irr_driver) { this->irr_driver = irr_driver; }
 
-    std::shared_ptr<ChIrrGuiDriver> irr_driver;
+    std::shared_ptr<ChInteractiveDriverIRR> irr_driver;
 };
 
 // =============================================================================
@@ -182,9 +183,9 @@ int main(int argc, char* argv[]) {
 
     // Get the vehicle JSON filenames
     double cam_distance;
-    std::string vehicle_file, powertrain_file, zombie_file;
-    GetVehicleModelFiles((VehicleType)cli.GetAsType<int>("vehicle"), vehicle_file, powertrain_file, zombie_file,
-                         cam_distance);
+    std::string vehicle_file, engine_file, transmission_file, zombie_file;
+    GetVehicleModelFiles((VehicleType)cli.GetAsType<int>("vehicle"), vehicle_file, engine_file, transmission_file,
+                         zombie_file, cam_distance);
 
     // Create the vehicle, set parameters, and initialize
     TrackedVehicle vehicle(vehicle_file, contact_method);
@@ -199,7 +200,9 @@ int main(int argc, char* argv[]) {
     vehicle.SetSuspensionVisualizationType(road_wheel_assembly_vis_type);
 
     // Create and initialize the powertrain system
-    auto powertrain = ReadPowertrainJSON(powertrain_file);
+    auto engine = ReadEngineJSON(vehicle::GetDataFile(engine_file));
+    auto transmission = ReadTransmissionJSON(vehicle::GetDataFile(transmission_file));
+    auto powertrain = chrono_types::make_shared<ChPowertrainAssembly>(engine, transmission);
     vehicle.InitializePowertrain(powertrain);
 
     // Add vehicle as an agent and initialize SynChronoManager
@@ -222,7 +225,7 @@ int main(int argc, char* argv[]) {
         temp_app->AttachVehicle(&vehicle);
 
         // Create the interactive driver system
-        auto irr_driver = chrono_types::make_shared<ChIrrGuiDriver>(*temp_app);
+        auto irr_driver = chrono_types::make_shared<ChInteractiveDriverIRR>(*temp_app);
 
         // Set the time response for steering and throttle keyboard inputs.
         double steering_time = 1.0;  // time to go from 0 to +1 (or from 0 to -1)
@@ -273,7 +276,7 @@ int main(int argc, char* argv[]) {
         driver.Synchronize(time);
         terrain.Synchronize(time);
         vehicle.Synchronize(time, driver_inputs, shoe_forces_left, shoe_forces_right);
-        app.Synchronize("", driver_inputs);
+        app.Synchronize(time, driver_inputs);
 
         // Advance simulation for one timestep for all modules
         driver.Advance(step_size);
@@ -320,13 +323,15 @@ void AddCommandLineOptions(ChCLI& cli) {
 
 void GetVehicleModelFiles(VehicleType type,
                           std::string& vehicle,
-                          std::string& powertrain,
+                          std::string& engine,
+                          std::string& transmission,
                           std::string& zombie,
                           double& cam_distance) {
     switch (type) {
         case VehicleType::M113:
             vehicle = vehicle::GetDataFile("M113/vehicle/M113_Vehicle_SinglePin.json");
-            powertrain = vehicle::GetDataFile("M113/powertrain/M113_SimpleCVTPowertrain.json");
+            engine = vehicle::GetDataFile("M113/powertrain/M113_EngineSimple.json");
+            transmission = vehicle::GetDataFile("M113/powertrain/M113_AutomaticTransmissionSimple.json");
             zombie = synchrono::GetDataFile("vehicle/M113.json");
             cam_distance = 8.0;
             break;
